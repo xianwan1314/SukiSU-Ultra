@@ -2,7 +2,6 @@ package com.sukisu.ultra.ui.screen.susfs.component.material
 
 import android.annotation.SuppressLint
 import android.content.pm.PackageInfo
-import android.graphics.drawable.Drawable
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -42,8 +41,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -67,7 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.sukisu.ultra.R
 import com.sukisu.ultra.ui.screen.susfs.util.AppInfoCache
-import com.sukisu.ultra.ui.screen.susfs.util.SuSFSManager
+import com.sukisu.ultra.ui.screen.susfs.util.AppInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -140,12 +137,12 @@ fun AddAppPathDialogMaterial(
     onDismiss: () -> Unit,
     onConfirm: (List<String>) -> Unit,
     isLoading: Boolean,
-    apps: List<SuSFSManager.AppInfo> = emptyList(),
+    apps: List<AppInfo> = emptyList(),
     onLoadApps: () -> Unit,
     existingSusPaths: Set<String> = emptySet()
 ) {
     var searchText by remember { mutableStateOf("") }
-    var selectedApps by remember { mutableStateOf(setOf<SuSFSManager.AppInfo>()) }
+    var selectedApps by remember { mutableStateOf(setOf<AppInfo>()) }
 
     val addedPackageNames = remember(existingSusPaths) {
         existingSusPaths.mapNotNull { path ->

@@ -17,8 +17,10 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.ui.platform.LocalLocale
+import com.sukisu.ultra.ui.screen.susfs.util.BackupData
 import com.sukisu.ultra.ui.screen.susfs.util.SuSFSManager
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun BackupRestoreComponentMaterial(
@@ -36,7 +38,7 @@ fun BackupRestoreComponentMaterial(
     var showRestoreDialog by remember { mutableStateOf(false) }
     var showRestoreConfirmDialog by remember { mutableStateOf(false) }
     var selectedBackupFile by remember { mutableStateOf<String?>(null) }
-    var backupInfo by remember { mutableStateOf<SuSFSManager.BackupData?>(null) }
+    var backupInfo by remember { mutableStateOf<BackupData?>(null) }
 
     // 备份文件选择器
     val backupFileLauncher = rememberLauncherForActivityResult(
@@ -211,7 +213,7 @@ fun BackupRestoreComponentMaterial(
                                     internalLoading = false
                                     onLoadingChange(false)
                                     showRestoreConfirmDialog = false
-                                    delay(100)
+                                    delay(100.milliseconds)
                                     selectedBackupFile = null
                                     backupInfo = null
                                 }

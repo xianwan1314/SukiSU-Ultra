@@ -116,7 +116,7 @@ fun SuSFSMiuix() {
                     SuSFSManager.addSusPath(context, path)
                 }
                 if (success) {
-                    viewModel.reloadConfig(context)
+                    viewModel.reloadConfig()
                 }
                 viewModel.closeAddPathDialog()
             }
@@ -139,7 +139,7 @@ fun SuSFSMiuix() {
                     SuSFSManager.addSusLoopPath(context, path)
                 }
                 if (success) {
-                    viewModel.reloadConfig(context)
+                    viewModel.reloadConfig()
                 }
                 viewModel.closeAddLoopPathDialog()
             }
@@ -162,7 +162,7 @@ fun SuSFSMiuix() {
                     SuSFSManager.addSusMap(context, path)
                 }
                 if (success) {
-                    viewModel.reloadConfig(context)
+                    viewModel.reloadConfig()
                 }
                 viewModel.closeAddSusMapDialog()
             }
@@ -185,7 +185,7 @@ fun SuSFSMiuix() {
                     }
                 }
                 if (successCount > 0) {
-                    viewModel.reloadConfig(context)
+                    viewModel.reloadConfig()
                 }
                 viewModel.closeAddAppPathDialog()
             }
@@ -228,7 +228,7 @@ fun SuSFSMiuix() {
                     )
                 }
                 if (success) {
-                    viewModel.reloadConfig(context)
+                    viewModel.reloadConfig()
                 }
                 viewModel.closeAddKstatStaticallyDialog()
             }
@@ -249,7 +249,7 @@ fun SuSFSMiuix() {
                     SuSFSManager.addKstat(context, path)
                 }
                 if (success) {
-                    viewModel.reloadConfig(context)
+                    viewModel.reloadConfig()
                 }
                 viewModel.closeAddKstatDialog()
             }
@@ -264,7 +264,7 @@ fun SuSFSMiuix() {
         showDialog = uiState.showConfirmReset,
         onDismiss = { viewModel.toggleConfirmReset(false) },
         onConfirm = {
-            viewModel.resetAll(context)
+            viewModel.resetAll()
         },
         titleRes = R.string.susfs_reset_confirm_title,
         messageRes = R.string.susfs_reset_confirm_title,
@@ -276,11 +276,11 @@ fun SuSFSMiuix() {
         onDismiss = { viewModel.toggleResetPathsDialog(false) },
         onConfirm = {
             coroutineScope.launch {
-                SuSFSManager.saveSusPaths(context, emptySet())
-                if (SuSFSManager.isAutoStartEnabled(context)) {
+                SuSFSManager.saveSusPaths(emptySet())
+                if (SuSFSManager.isAutoStartEnabled()) {
                     SuSFSManager.configureAutoStart(context, true)
                 }
-                viewModel.reloadConfig(context)
+                viewModel.reloadConfig()
                 viewModel.toggleResetPathsDialog(false)
             }
         },
@@ -294,11 +294,11 @@ fun SuSFSMiuix() {
         onDismiss = { viewModel.toggleResetLoopPathsDialog(false) },
         onConfirm = {
             coroutineScope.launch {
-                SuSFSManager.saveSusLoopPaths(context, emptySet())
-                if (SuSFSManager.isAutoStartEnabled(context)) {
+                SuSFSManager.saveSusLoopPaths(emptySet())
+                if (SuSFSManager.isAutoStartEnabled()) {
                     SuSFSManager.configureAutoStart(context, true)
                 }
-                viewModel.reloadConfig(context)
+                viewModel.reloadConfig()
                 viewModel.toggleResetLoopPathsDialog(false)
             }
         },
@@ -312,11 +312,11 @@ fun SuSFSMiuix() {
         onDismiss = { viewModel.toggleResetSusMapsDialog(false) },
         onConfirm = {
             coroutineScope.launch {
-                SuSFSManager.saveSusMaps(context, emptySet())
-                if (SuSFSManager.isAutoStartEnabled(context)) {
+                SuSFSManager.saveSusMaps(emptySet())
+                if (SuSFSManager.isAutoStartEnabled()) {
                     SuSFSManager.configureAutoStart(context, true)
                 }
-                viewModel.reloadConfig(context)
+                viewModel.reloadConfig()
                 viewModel.toggleResetSusMapsDialog(false)
             }
         },
@@ -331,12 +331,12 @@ fun SuSFSMiuix() {
         onDismiss = { viewModel.toggleResetKstatDialog(false) },
         onConfirm = {
             coroutineScope.launch {
-                SuSFSManager.saveKstatConfigs(context, emptySet())
-                SuSFSManager.saveAddKstatPaths(context, emptySet())
-                if (SuSFSManager.isAutoStartEnabled(context)) {
+                SuSFSManager.saveKstatConfigs(emptySet())
+                SuSFSManager.saveAddKstatPaths(emptySet())
+                if (SuSFSManager.isAutoStartEnabled()) {
                     SuSFSManager.configureAutoStart(context, true)
                 }
-                viewModel.reloadConfig(context)
+                viewModel.reloadConfig()
                 viewModel.toggleResetKstatDialog(false)
             }
         },
@@ -468,7 +468,7 @@ fun SuSFSMiuix() {
                             onReset = { viewModel.toggleConfirmReset(true) },
                             onApply = { viewModel.applyBasicSettings(context) },
                             onConfigReload = {
-                                viewModel.reloadConfig(context)
+                                viewModel.reloadConfig()
                             }
                         )
                     }
@@ -483,8 +483,8 @@ fun SuSFSMiuix() {
                             },
                             onRemovePath = { path ->
                                 coroutineScope.launch {
-                                    if (SuSFSManager.removeSusPath(context, path)) {
-                                        viewModel.reloadConfig(context)
+                                    if (SuSFSManager.removeSusPath(path)) {
+                                        viewModel.reloadConfig()
                                     }
                                 }
                             },
@@ -502,8 +502,8 @@ fun SuSFSMiuix() {
                             onAddLoopPath = { viewModel.openAddLoopPathDialog() },
                             onRemoveLoopPath = { path ->
                                 coroutineScope.launch {
-                                    if (SuSFSManager.removeSusLoopPath(context, path)) {
-                                        viewModel.reloadConfig(context)
+                                    if (SuSFSManager.removeSusLoopPath(path)) {
+                                        viewModel.reloadConfig()
                                     }
                                 }
                             },
@@ -520,8 +520,8 @@ fun SuSFSMiuix() {
                             onAddSusMap = { viewModel.openAddSusMapDialog() },
                             onRemoveSusMap = { map ->
                                 coroutineScope.launch {
-                                    if (SuSFSManager.removeSusMap(context, map)) {
-                                        viewModel.reloadConfig(context)
+                                    if (SuSFSManager.removeSusMap(map)) {
+                                        viewModel.reloadConfig()
                                     }
                                 }
                             },
@@ -540,8 +540,8 @@ fun SuSFSMiuix() {
                             onAddKstat = { viewModel.openAddKstatDialog() },
                             onRemoveKstatConfig = { config ->
                                 coroutineScope.launch {
-                                    if (SuSFSManager.removeKstatConfig(context, config)) {
-                                        viewModel.reloadConfig(context)
+                                    if (SuSFSManager.removeKstatConfig(config)) {
+                                        viewModel.reloadConfig()
                                     }
                                 }
                             },
@@ -550,8 +550,8 @@ fun SuSFSMiuix() {
                             },
                             onRemoveAddKstat = { path ->
                                 coroutineScope.launch {
-                                    if (SuSFSManager.removeAddKstat(context, path)) {
-                                        viewModel.reloadConfig(context)
+                                    if (SuSFSManager.removeAddKstat(path)) {
+                                        viewModel.reloadConfig()
                                     }
                                 }
                             },
