@@ -19,6 +19,7 @@ import com.sukisu.ultra.data.repository.SettingsRepositoryImpl
 import com.sukisu.ultra.ksuApp
 import com.sukisu.ultra.ui.screen.settings.SettingsUiState
 import com.sukisu.ultra.ui.theme.ColorMode
+import com.sukisu.ultra.ui.util.findActivity
 
 class SettingsViewModel(
     private val repo: SettingsRepository = SettingsRepositoryImpl()
@@ -43,6 +44,7 @@ class SettingsViewModel(
             val enableBlur = repo.enableBlur
             val enableFloatingBottomBar = repo.enableFloatingBottomBar
             val enableFloatingBottomBarBlur = repo.enableFloatingBottomBarBlur
+            val enableNavigationBadge = repo.enableNavigationBadge
             val pageScale = repo.pageScale
             val enableWebDebugging = repo.enableWebDebugging
             val showFullStatus = repo.showFullStatus
@@ -67,12 +69,14 @@ class SettingsViewModel(
             val isAdbRootEnabled = repo.getAdbRootPersistValue() == 1L
             val isDefaultUmountModules = repo.isDefaultUmountModules()
             val uiMode = repo.uiMode
+            val appLanguage = repo.appLanguage
             val autoJailbreak = repo.autoJailbreak
             val isLateLoadMode = Natives.isLateLoadMode
 
             _uiState.update {
                 it.copy(
                     uiMode = uiMode,
+                    appLanguage = appLanguage,
                     checkUpdate = checkUpdate,
                     checkModuleUpdate = checkModuleUpdate,
                     alternativeIcon = alternativeIcon,
@@ -83,6 +87,7 @@ class SettingsViewModel(
                     enableBlur = enableBlur,
                     enableFloatingBottomBar = enableFloatingBottomBar,
                     enableFloatingBottomBarBlur = enableFloatingBottomBarBlur,
+                    enableNavigationBadge = enableNavigationBadge,
                     pageScale = pageScale,
                     enableWebDebugging = enableWebDebugging,
                     showFullStatus = showFullStatus,
@@ -141,6 +146,15 @@ class SettingsViewModel(
         repo.uiMode = mode
         repo.themeMode = newThemeMode
         _uiState.update { it.copy(uiMode = mode, themeMode = newThemeMode) }
+    }
+
+    fun setLanguage(context: Context, tag: String) {
+        if (repo.appLanguage == tag) return
+        repo.appLanguage = tag
+        _uiState.update { it.copy(appLanguage = tag) }
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.findActivity()?.recreate()
+        }
     }
 
     fun setCheckModuleUpdate(enabled: Boolean) {
@@ -215,6 +229,11 @@ class SettingsViewModel(
     fun setEnableFloatingBottomBarBlur(enabled: Boolean) {
         repo.enableFloatingBottomBarBlur = enabled
         _uiState.update { it.copy(enableFloatingBottomBarBlur = enabled) }
+    }
+
+    fun setEnableNavigationBadge(enabled: Boolean) {
+        repo.enableNavigationBadge = enabled
+        _uiState.update { it.copy(enableNavigationBadge = enabled) }
     }
 
     fun setPageScale(scale: Float) {
