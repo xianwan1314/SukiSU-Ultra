@@ -112,26 +112,12 @@ mod android {
         bail!("Parse KMI from modules failed")
     }
 
-    const VIVO_KMI_SUFFIX: &str = "_vivo";
-
-    fn to_vivo_kmi_name(kmi: String) -> String {
-        if kmi.ends_with(VIVO_KMI_SUFFIX) {
-            kmi
-        } else {
-            format!("{kmi}{VIVO_KMI_SUFFIX}")
-        }
-    }
-
     fn detect_current_base_kmi() -> Result<String> {
         parse_kmi_from_uname().or_else(|_| parse_kmi_from_modules())
     }
 
-    fn detect_current_vivo_kmi() -> Result<String> {
-        detect_current_base_kmi().map(to_vivo_kmi_name)
-    }
-
     pub fn get_current_kmi() -> Result<String> {
-        detect_current_vivo_kmi()
+        detect_current_base_kmi()
     }
 
     fn calculate_sha1(file_path: impl AsRef<Path>) -> Result<String> {

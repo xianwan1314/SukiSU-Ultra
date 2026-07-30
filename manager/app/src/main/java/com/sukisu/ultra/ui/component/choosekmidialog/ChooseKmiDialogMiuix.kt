@@ -22,9 +22,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.sukisu.ultra.R
-import com.sukisu.ultra.ui.util.filterVivoKmis
 import com.sukisu.ultra.ui.util.getSupportedKmis
-import com.sukisu.ultra.ui.util.preferVivoKmi
+import com.sukisu.ultra.ui.util.orderSupportedKmis
+import com.sukisu.ultra.ui.util.resolvePreferredKmi
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -44,14 +44,15 @@ fun ChooseKmiDialogMiuix(
         value = getSupportedKmis()
     }
     val orderedKMIs = rememberSaveable(supportedKMIs) {
-        filterVivoKmis(supportedKMIs)
+        orderSupportedKmis(supportedKMIs)
     }
-    val preferred = remember(preferredKmi, currentKmi) {
-        preferVivoKmi(preferredKmi, currentKmi)
+    val preferred = remember(preferredKmi, currentKmi, orderedKMIs) {
+        resolvePreferredKmi(preferredKmi, currentKmi, orderedKMIs)
     }
     val currentSelection = rememberSaveable(currentKmi, preferred, orderedKMIs) {
         mutableStateOf(
             orderedKMIs.firstOrNull { it == preferred }
+                ?: orderedKMIs.firstOrNull { it == currentKmi }
                 ?: orderedKMIs.firstOrNull()
                 ?: preferred
         )

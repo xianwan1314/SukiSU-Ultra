@@ -17,9 +17,9 @@ import androidx.compose.ui.unit.dp
 import com.sukisu.ultra.R
 import com.sukisu.ultra.ui.component.material.SegmentedColumn
 import com.sukisu.ultra.ui.component.material.SegmentedRadioItem
-import com.sukisu.ultra.ui.util.filterVivoKmis
 import com.sukisu.ultra.ui.util.getSupportedKmis
-import com.sukisu.ultra.ui.util.preferVivoKmi
+import com.sukisu.ultra.ui.util.orderSupportedKmis
+import com.sukisu.ultra.ui.util.resolvePreferredKmi
 import kotlin.collections.map
 
 @Composable
@@ -37,15 +37,16 @@ fun ChooseKmiDialogMaterial(
     }
 
     val orderedKMIs = remember(supportedKMIs) {
-        filterVivoKmis(supportedKMIs)
+        orderSupportedKmis(supportedKMIs)
     }
 
-    val preferred = remember(preferredKmi, currentKmi) {
-        preferVivoKmi(preferredKmi, currentKmi)
+    val preferred = remember(preferredKmi, currentKmi, orderedKMIs) {
+        resolvePreferredKmi(preferredKmi, currentKmi, orderedKMIs)
     }
     val selectedKmi = remember(currentKmi, preferred, orderedKMIs) {
         mutableStateOf(
             orderedKMIs.firstOrNull { it == preferred }
+                ?: orderedKMIs.firstOrNull { it == currentKmi }
                 ?: orderedKMIs.firstOrNull()
                 ?: preferred
         )
