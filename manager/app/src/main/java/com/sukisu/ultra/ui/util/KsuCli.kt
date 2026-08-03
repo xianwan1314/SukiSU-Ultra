@@ -24,6 +24,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import com.sukisu.ultra.BuildConfig
 import com.sukisu.ultra.Natives
+import com.sukisu.ultra.R
 import com.sukisu.ultra.ksuApp
 import org.json.JSONArray
 import java.io.File
@@ -296,16 +297,16 @@ fun installBoot(
         }
     }
 
-    val isVendorBoot = isVendorBootTarget(bootImageKind, partition)
-    val targetName = describeBootTarget(bootImageKind, partition)
-    onStdout("[manager] received args: partition=${partition ?: "<null>"} imageKind=${bootImageKind ?: "<null>"} ota=$ota lkm=${lkm.javaClass.simpleName}")
-    if (isVendorBoot) {
-        onStdout("[manager] detected $targetName, removing vr.ko and related module references")
-    } else {
-        onStdout("[manager] detected $targetName, using vivo compat flow to inject KernelSU LKM")
+    val useVendorBootRmvr = isVendorBootTarget(bootImageKind, partition)
+    if (useVendorBootRmvr && lkm != LkmSelection.KmiNone) {
+        onStdout(ksuApp.getString(R.string.vendor_boot_rmvr_lkm_not_used))
     }
 
-    var cmd = VIVO_BOOT_PATCH_COMMAND
+    var cmd = if (useVendorBootRmvr) {
+        VENDOR_BOOT_RMVR_COMMAND
+    } else {
+        BOOT_PATCH_COMMAND
+    }
 
     cmd += if (bootFile == null) {
         // no boot.img, use -f to flash
@@ -314,54 +315,52 @@ fun installBoot(
         " -b ${bootFile.absolutePath}"
     }
 
-    if (allowShell) {
-        cmd += " --allow-shell"
-    }
-
-    if (enableAdb) {
-        cmd += " --enable-adbd"
-    }
-
-    if (isVendorBoot) {
-        cmd += " --no-install"
-    }
-
-    if (spoofRelease.isNotBlank()) {
-        cmd += " --spoof-release ${spoofRelease.shellArg()}"
-    }
-
-    if (spoofVersion.isNotBlank()) {
-        cmd += " --spoof-version ${spoofVersion.shellArg()}"
-    }
-
     if (ota) {
         cmd += " -u"
     }
 
-    if (forceBackup) {
-        cmd += " --backup"
-    }
-
     var lkmFile: File? = null
-    when (lkm) {
-        is LkmSelection.LkmUri -> {
-            lkmFile = with(resolver.openInputStream(lkm.uri)) {
-                val file = File(ksuApp.cacheDir, "kernelsu-tmp-lkm.ko")
-                file.outputStream().use { output ->
-                    this?.copyTo(output)
+    if (!useVendorBootRmvr) {
+        if (allowShell) {
+            cmd += " --allow-shell"
+        }
+
+        if (enableAdb) {
+            cmd += " --enable-adbd"
+        }
+
+        if (spoofRelease.isNotBlank()) {
+            cmd += " --spoof-release ${spoofRelease.shellArg()}"
+        }
+
+        if (spoofVersion.isNotBlank()) {
+            cmd += " --spoof-version ${spoofVersion.shellArg()}"
+        }
+
+        if (forceBackup) {
+            cmd += " --backup"
+        }
+
+        when (lkm) {
+            is LkmSelection.LkmUri -> {
+                lkmFile = with(resolver.openInputStream(lkm.uri)) {
+                    val file = File(ksuApp.cacheDir, "kernelsu-tmp-lkm.ko")
+                    file.outputStream().use { output ->
+                        this?.copyTo(output)
+                    }
+
+                    file
                 }
-
-                file
+                cmd += " -m ${lkmFile.absolutePath}"
             }
-            cmd += " -m ${lkmFile.absolutePath}"
-        }
 
-        is LkmSelection.KmiString -> {
-            cmd += " --kmi ${lkm.value}"
-        }
+            is LkmSelection.KmiString -> {
+                cmd += " --kmi ${lkm.value}"
+            }
 
-        LkmSelection.KmiNone -> {
-            // do nothing
+            LkmSelection.KmiNone -> {
+                // do nothing
+            }
         }
     }
 
@@ -371,7 +370,7 @@ fun installBoot(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val outputKind = resolveBootImageKindForOutput(bootImageKind, partition)
         val outputName = if (outputKind == null) {
-            "kernelsu_patched_vivo_${System.currentTimeMillis()}.img"
+            "kernelsu_patched_${System.currentTimeMillis()}.img"
         } else {
             "kernelsu_patched_${outputKind}_${System.currentTimeMillis()}.img"
         }
@@ -383,16 +382,24 @@ fun installBoot(
         cmd += " --partition $part"
     }
 
-    val result = flashWithIO("${getKsuDaemonPath()} $cmd", onStdout, onStderr)
+    var rmvrChanged = false
+    val stdout: (String) -> Unit = { line ->
+        if (useVendorBootRmvr && line.contains("KERNELSU_RMVR_CHANGED=1")) {
+            rmvrChanged = true
+        }
+        onStdout(line)
+    }
+    val result = flashWithIO("${getKsuDaemonPath()} $cmd", stdout, onStderr)
     Log.i("KernelSU", "install boot result: ${result.isSuccess}")
 
     bootFile?.delete()
     lkmFile?.delete()
 
     // if boot uri is empty, it is direct install, when success, we should show reboot button
-    val showReboot = bootUri == null && result.isSuccess // we create a temporary val here, to avoid calc showReboot double
-    if (showReboot) { // because we decide do not update ksud when startActivity
-        install() // install ksud here
+    val showReboot = bootUri == null && result.isSuccess &&
+        (!useVendorBootRmvr || !ota && rmvrChanged)
+    if (bootUri == null && result.isSuccess && !useVendorBootRmvr) {
+        install()
     }
     return FlashResult(result, showReboot)
 }

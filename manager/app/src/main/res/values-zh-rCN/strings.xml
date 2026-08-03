@@ -228,6 +228,7 @@
     <string name="select_file_tip_nogki">请选择要修补的 GKI 设备镜像文件</string>
     <string name="install_only_support_boot_family_image">仅支持修补 boot.img、init_boot.img 或 vendor_boot.img。</string>
     <string name="install_only_support_boot_family_partition">仅支持修补 boot、init_boot 或 vendor_boot 分区。</string>
+    <string name="vendor_boot_rmvr_lkm_not_used">vendor_boot 清理只会移除 vr/vklp，不会安装所选的 LKM。</string>
     <string name="current_kmi">本设备 KMI 版本: %s</string>
     <string name="current_device_kmi">当前设备的 KMI</string>
     <string name="module_action_success">模块 action 执行成功。</string>

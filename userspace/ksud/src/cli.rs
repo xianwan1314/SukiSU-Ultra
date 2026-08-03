@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use android_logger::Config;
 use log::{LevelFilter, error, info};
 
-use crate::boot_patch::{BootPatchArgs, BootRestoreArgs};
+use crate::boot_patch::{BootPatchArgs, BootRestoreArgs, VendorBootRmvrArgs};
 use crate::module::regenerate_preinit_rc;
 #[cfg(target_arch = "aarch64")]
 use crate::susfs;
@@ -126,8 +126,8 @@ enum Commands {
     /// Patch boot or init_boot images to apply KernelSU
     BootPatch(BootPatchArgs),
 
-    /// Patch vendor_boot for vivo devices and remove vr.ko related entries
-    BootPatchVivo(BootPatchArgs),
+    /// Remove conflicting prebuilt modules from vendor_boot
+    BootPatchRmvr(VendorBootRmvrArgs),
 
     /// Restore boot or init_boot images patched by KernelSU
     BootRestore(BootRestoreArgs),
@@ -1012,7 +1012,7 @@ pub fn run() -> Result<()> {
         },
 
         Commands::BootPatch(boot_patch) => crate::boot_patch::patch(boot_patch),
-        Commands::BootPatchVivo(boot_patch) => crate::boot_patch::patch_vivo(boot_patch),
+        Commands::BootPatchRmvr(rmvr) => crate::boot_patch::patch_rmvr(rmvr),
 
         Commands::BootInfo { command } => match command {
             BootInfo::CurrentKmi => {

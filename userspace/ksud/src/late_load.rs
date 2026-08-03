@@ -61,9 +61,19 @@ pub fn run(
         let ko_name = format!("{kmi}_kernelsu.ko");
         let ko_data = assets::get_asset_data(&ko_name)
             .with_context(|| format!("Failed to get {ko_name} from assets"))?;
+        let vivo_ko_name = format!("{kmi}_vivo_kernelsu.ko");
+        let vivo_ko_data = assets::get_asset_data(&vivo_ko_name).ok();
+        if vivo_ko_data.is_some() {
+            info!(
+                "Found vivo fallback module for KMI {kmi}: {}",
+                vivo_ko_name
+            );
+        } else {
+            info!("No vivo fallback module asset for KMI {kmi}");
+        }
 
         // 4. Load kernelsu.ko from memory with manual relocation
-        info!("Loading kernelsu.ko for KMI {kmi}...");
+        info!("Loading primary module {} for KMI {kmi}...", ko_name);
         let mut params = if allow_shell {
             "allow_shell=1 ".to_string()
         } else {
@@ -78,8 +88,16 @@ pub fn run(
         }
 
         let params_cstr = std::ffi::CString::new(params.trim())?;
-        ksuinit::load_module(&ko_data, &params_cstr).context("Failed to load kernelsu.ko")?;
-        info!("kernelsu.ko loaded successfully!");
+        ksuinit::load_module_with_named_vermagic_fallback(
+            &ko_data,
+            &ko_name,
+            vivo_ko_data
+                .as_deref()
+                .map(|buffer| (buffer, vivo_ko_name.as_str())),
+            &params_cstr,
+        )
+        .context("Failed to load kernelsu.ko")?;
+        info!("KernelSU module load completed for KMI {kmi}");
         dump_process_info("after load_module");
     }
 
