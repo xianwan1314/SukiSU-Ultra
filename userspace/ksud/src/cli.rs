@@ -6,6 +6,7 @@ use android_logger::Config;
 use log::{LevelFilter, error, info};
 
 use crate::boot_patch::{BootPatchArgs, BootRestoreArgs, VendorBootRmvrArgs};
+use crate::lkm_image::BootPatchV2Args;
 use crate::module::regenerate_preinit_rc;
 #[cfg(target_arch = "aarch64")]
 use crate::susfs;
@@ -131,6 +132,11 @@ enum Commands {
 
     /// Restore boot or init_boot images patched by KernelSU
     BootRestore(BootRestoreArgs),
+
+    /// Patch KernelSU into a boot image
+    ///
+    /// Always operates on a boot image; never selects init_boot or vendor_boot.
+    BootPatchV2(BootPatchV2Args),
 
     /// Show boot information
     BootInfo {
@@ -620,6 +626,11 @@ enum Susfs {
         /// 0 to disable, 1 to enable
         enabled: u32,
     },
+    /// Spoof /proc/cmdline (non-gki) or /proc/bootconfig (gki) from a text file
+    SetCmdlineOrBootconfig {
+        /// path to the fake cmdline/bootconfig file
+        path: String,
+    },
     /// Hide SUS mounts for non-su processes
     HideSusMntsForNonSuProcs {
         /// 0 to disable, 1 to enable
@@ -1067,6 +1078,7 @@ pub fn run() -> Result<()> {
             }
         },
         Commands::BootRestore(boot_restore) => crate::boot_patch::restore(boot_restore),
+        Commands::BootPatchV2(patch) => crate::lkm_image::patch_boot(&patch),
         Commands::Resetprop { args } => {
             let mut full_args = vec!["resetprop".to_string()];
             full_args.extend(args);
@@ -1148,6 +1160,7 @@ pub fn run() -> Result<()> {
                 Susfs::EnableAvcLogSpoofing { enabled } => {
                     susfs::enable_avc_log_spoofing(enabled != 0)
                 }
+                Susfs::SetCmdlineOrBootconfig { path } => susfs::set_cmdline_or_bootconfig(&path),
                 Susfs::HideSusMntsForNonSuProcs { enabled } => {
                     susfs::hide_sus_mnts_for_non_su_procs(enabled != 0)
                 }

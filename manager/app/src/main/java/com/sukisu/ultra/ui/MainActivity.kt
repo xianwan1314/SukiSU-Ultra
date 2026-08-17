@@ -30,6 +30,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,8 +38,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,13 +49,18 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import com.sukisu.ultra.Natives
 import com.sukisu.ultra.ui.component.bottombar.BottomBar
 import com.sukisu.ultra.ui.component.bottombar.MainPagerState
-import com.sukisu.ultra.ui.component.bottombar.ModuleBadgeState
+import com.sukisu.ultra.ui.component.bottombar.NavigationBadgeState
 import com.sukisu.ultra.ui.component.bottombar.SideRail
 import com.sukisu.ultra.ui.component.bottombar.rememberMainPagerState
+import com.sukisu.ultra.ui.component.bottombar.useNavigationRail
 import com.sukisu.ultra.ui.kernelFlash.KernelFlashScreen
 import com.sukisu.ultra.ui.navigation3.HandleZipFileIntent
 import com.sukisu.ultra.ui.navigation3.IntentDispatcher
@@ -89,6 +93,7 @@ import com.sukisu.ultra.ui.theme.LocalEnableBlur
 import com.sukisu.ultra.ui.theme.LocalEnableFloatingBottomBar
 import com.sukisu.ultra.ui.theme.LocalEnableFloatingBottomBarBlur
 import com.sukisu.ultra.ui.theme.LocalEnableNavigationBadge
+import com.sukisu.ultra.ui.util.getSuperuserCount
 import com.sukisu.ultra.ui.util.install
 import com.sukisu.ultra.ui.util.rememberBlurBackdrop
 import com.sukisu.ultra.ui.util.rememberContentReady
@@ -96,6 +101,7 @@ import com.sukisu.ultra.ui.util.rootAvailable
 import com.sukisu.ultra.ui.viewmodel.MainActivityViewModel
 import com.sukisu.ultra.ui.viewmodel.MainPagerConfig
 import com.sukisu.ultra.ui.viewmodel.ModuleViewModel
+import com.sukisu.ultra.ui.viewmodel.SuperUserViewModel
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
@@ -113,8 +119,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val isManager = Natives.isManager
-        if (isManager && !Natives.requireNewKernel()) install()
+        if (Natives.isManager && !Natives.requireNewKernel()) install()
 
         if (savedInstanceState == null) intent?.let { intentChannel.trySend(it) }
 
@@ -253,24 +258,39 @@ fun MainScreen(
     var userScrollEnabled by remember(isFullFeatured) { mutableStateOf(isFullFeatured) }
 
     val enableNavigationBadge = LocalEnableNavigationBadge.current
+    val badgeEnabled = enableNavigationBadge && isFullFeatured
     val moduleViewModel = viewModel<ModuleViewModel>()
     val moduleUiState by moduleViewModel.uiState.collectAsStateWithLifecycle()
-    val moduleBadge = if (enableNavigationBadge && isFullFeatured) {
-        ModuleBadgeState(
-            enabledCount = moduleUiState.modules.count { it.enabled },
-            updatableCount = moduleUiState.updateInfo.count { it.value.downloadUrl.isNotBlank() },
-        )
-    } else {
-        ModuleBadgeState()
-    }
-    LaunchedEffect(enableNavigationBadge, isFullFeatured) {
+    LaunchedEffect(badgeEnabled) {
         // The module list normally loads when the module pager is first visited; load it eagerly
         // so the badge is populated while the user is still on another tab.
-        if (enableNavigationBadge && isFullFeatured && moduleViewModel.uiState.value.modules.isEmpty()) {
+        if (badgeEnabled && moduleViewModel.uiState.value.modules.isEmpty()) {
             moduleViewModel.initializePreferences()
             moduleViewModel.loadModuleList()
             moduleViewModel.syncModuleUpdateInfo(moduleViewModel.uiState.value.modules)
         }
+    }
+
+    // Loading the app list just for a badge is too expensive; read the kernel allowlist instead.
+    val superUserViewModel = viewModel<SuperUserViewModel>()
+    val grantedUidCount by remember(superUserViewModel) {
+        superUserViewModel.uiState
+            .map { state -> state.groupedApps.count { it.anyAllowSu } }
+            .distinctUntilChanged()
+    }.collectAsStateWithLifecycle(0)
+    var superuserCount by remember { mutableIntStateOf(0) }
+    LaunchedEffect(badgeEnabled, grantedUidCount) {
+        superuserCount = if (badgeEnabled) withContext(Dispatchers.IO) { getSuperuserCount() } else 0
+    }
+
+    val navigationBadge = if (badgeEnabled) {
+        NavigationBadgeState(
+            superuserCount = superuserCount,
+            moduleEnabledCount = moduleUiState.modules.count { it.enabled },
+            moduleUpdatableCount = moduleUiState.updateInfo.count { it.value.downloadUrl.isNotBlank() },
+        )
+    } else {
+        NavigationBadgeState()
     }
     val uiMode = LocalUiMode.current
     val surfaceColor = when (uiMode) {
@@ -296,13 +316,7 @@ fun MainScreen(
 
     MainScreenBackHandler(mainPagerState, navController)
 
-    val windowInfo = LocalWindowInfo.current
-    val deviceDensity = LocalResources.current.displayMetrics.density
-    val widthDp = windowInfo.containerSize.width / deviceDensity
-    val heightDp = windowInfo.containerSize.height / deviceDensity
-    val showSplitPane = widthDp >= 840f ||
-            (widthDp >= 600f && heightDp / widthDp < 1.2f)
-    val useNavigationRail = showSplitPane && !(uiMode == UiMode.Miuix && enableFloatingBottomBar)
+    val useNavigationRail = useNavigationRail(enableFloatingBottomBar)
 
     CompositionLocalProvider(
         LocalMainPagerState provides mainPagerState
@@ -315,6 +329,7 @@ fun MainScreen(
                         .then(if (enableFloatingBottomBar && enableFloatingBottomBarBlur) Modifier.layerBackdrop(backdrop) else Modifier),
                     state = mainPagerState.pagerState,
                     beyondViewportPageCount = if (contentReady) 3 else 0,
+                    overscrollEffect = null,
                     userScrollEnabled = userScrollEnabled,
                 ) { page ->
                     val isCurrentPage = page == settledPage
@@ -338,7 +353,7 @@ fun MainScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ) {
                     Row {
-                        SideRail(moduleBadge)
+                        SideRail(navigationBadge)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -351,7 +366,7 @@ fun MainScreen(
 
                 UiMode.Miuix -> Scaffold { _ ->
                     Row {
-                        SideRail(moduleBadge)
+                        SideRail(navigationBadge)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -370,7 +385,7 @@ fun MainScreen(
                     BottomBar(
                         blurBackdrop = blurBackdrop,
                         backdrop = backdrop,
-                        moduleBadge = moduleBadge,
+                        navigationBadge = navigationBadge,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }

@@ -1,13 +1,17 @@
-use anyhow::{Context, Result, bail};
-use goblin::elf::{Elf, section_header, sym::Sym};
-use scroll::{Pwrite, ctx::SizeWith};
+use anyhow::{bail, Context, Result};
+use goblin::elf::{section_header, sym::Sym, Elf};
+use scroll::{ctx::SizeWith, Pwrite};
 use std::collections::HashMap;
 use std::ffi::CStr;
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, SeekFrom};
+#[cfg(unix)]
+use std::fs::OpenOptions;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader};
+#[cfg(unix)]
+use std::io::{ErrorKind, Read, Seek, SeekFrom};
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
-use syscalls::{Sysno, syscall};
+use syscalls::{syscall, Sysno};
 
 struct Kptr {
     value: String,
@@ -82,6 +86,8 @@ pub fn for_each_kernel_symbols<F: FnMut(&(String, u64)) -> Result<bool>>(mut f: 
     Ok(())
 }
 
+/// Relocate undefined symbols in an ELF kernel module buffer using /proc/kallsyms,
+/// then load it via init_module syscall.
 pub fn load_module(data: &[u8], params: &CStr) -> Result<()> {
     load_module_inner(data, "module", None, params)
 }
@@ -91,7 +97,12 @@ pub fn load_module_with_vermagic_fallback(
     fallback_data: Option<&[u8]>,
     params: &CStr,
 ) -> Result<()> {
-    load_module_inner(data, "primary module", fallback_data.map(|data| (data, "fallback module")), params)
+    load_module_inner(
+        data,
+        "primary module",
+        fallback_data.map(|data| (data, "fallback module")),
+        params,
+    )
 }
 
 pub fn load_module_with_named_vermagic_fallback(
@@ -161,9 +172,9 @@ fn load_module_inner(
         Err(first_error) => {
             log::warn!(
                 "init_module failed for {} on first attempt: {:?}",
-                module_name, first_error
+                module_name,
+                first_error
             );
-
             let logs = match kmsg.as_mut() {
                 Some(file) => read_new_kmsg(file).unwrap_or_default(),
                 None => String::new(),
@@ -179,19 +190,22 @@ fn load_module_inner(
 
             log::warn!(
                 "Kernel requires vermagic {:?} while loading {}",
-                required_vermagic, module_name
+                required_vermagic,
+                module_name
             );
 
             if let Some((fallback_data, fallback_name)) = fallback {
                 log::warn!(
                     "Version-magic mismatch for {}; switching to fallback {}",
-                    module_name, fallback_name
+                    module_name,
+                    fallback_name
                 );
                 load_module_inner(fallback_data, fallback_name, None, params)
                     .with_context(|| format!("Fallback module load failed for {fallback_name}"))?;
                 log::info!(
                     "Fallback module {} loaded successfully after {} vermagic mismatch",
-                    fallback_name, module_name
+                    fallback_name,
+                    module_name
                 );
                 return Ok(());
             }
@@ -227,6 +241,7 @@ fn do_init_module(buffer: &[u8], params: &CStr) -> std::result::Result<(), sysca
     .map(|_| ())
 }
 
+#[cfg(unix)]
 const O_NONBLOCK_FLAG: i32 = 0x800;
 
 fn open_kmsg_at_end() -> Result<File> {
@@ -471,7 +486,7 @@ fn replace_module_vermagic(buffer: &mut Vec<u8>, required_vermagic: &str) -> Res
 }
 
 fn has_kernelsu_legacy() -> bool {
-    use syscalls::{Sysno, syscall};
+    use syscalls::{syscall, Sysno};
     let mut version = 0;
     const CMD_GET_VERSION: i32 = 2;
     unsafe {
@@ -489,7 +504,7 @@ fn has_kernelsu_legacy() -> bool {
 }
 
 fn has_kernelsu_v2() -> bool {
-    use syscalls::{Sysno, syscall};
+    use syscalls::{syscall, Sysno};
     const KSU_INSTALL_MAGIC1: u32 = 0xDEADBEEF;
     const KSU_INSTALL_MAGIC2: u32 = 0xCAFEBABE;
     const KSU_IOCTL_GET_INFO: u32 = 0x80104b02;

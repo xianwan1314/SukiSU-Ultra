@@ -403,7 +403,7 @@ fn map_file(file: &Path) -> Result<Mmap> {
     Ok(mmap)
 }
 
-fn parse_kmi(buffer: &[u8]) -> Result<String> {
+pub fn parse_kmi(buffer: &[u8]) -> Result<String> {
     let re = Regex::new(r"(\d+\.\d+)(?:\S+)?(android\d+)").context("Failed to compile regex")?;
     buffer
         .windows(4)
@@ -988,6 +988,13 @@ pub struct BootPatchArgs {
     #[arg(long, default_value = "false")]
     no_custom_rc: bool,
 
+    #[cfg(not(target_os = "android"))]
+    #[arg(long, default_value = "aarch64")]
+    arch: String,
+
+    /// Patching ramdisk instead of boot image. This is used for AVD ramdisk
+    #[arg(long, default_value = "false")]
+    ramdisk: bool,
 }
 
 #[derive(clap::Args, Debug)]
@@ -1141,6 +1148,9 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
             #[cfg(target_os = "android")]
             partition,
             no_custom_rc,
+            #[cfg(not(target_os = "android"))]
+            arch,
+            ramdisk,
         } = args;
 
         println!(include_str!("banner"));
@@ -1154,6 +1164,15 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
         }
 
         let is_replace_kernel = kernel.is_some();
+
+        if ramdisk && is_replace_kernel {
+            bail!("incompatiable option: --ramdisk and --kernel")
+        }
+
+        #[cfg(target_os = "android")]
+        if ramdisk && flash {
+            bail!("incompatiable option: --ramdisk and --flash")
+        }
 
         if is_replace_kernel {
             ensure!(
@@ -1176,7 +1195,9 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
                         println!("- {e}");
                     }
                 }
-                Ok(if let Some(image_path) = &image {
+                Ok(if ramdisk {
+                    bail!("please specify kmi manually")
+                } else if let Some(image_path) = &image {
                     println!(
                         "- Trying to auto detect KMI version for {}",
                         image_path.display()
@@ -1218,7 +1239,11 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
 
         println!("- Parsing boot image");
         let boot_image_data = map_file(&boot_image_file)?;
-        let boot_image = BootImage::parse(&boot_image_data)?;
+        let boot_image = if ramdisk {
+            BootImage::parse_raw_ramdisk(&boot_image_data)?
+        } else {
+            BootImage::parse(&boot_image_data)?
+        };
         enforce_bootimage_version(&boot_image)?;
         ensure!(
             !is_vendor_boot_version(boot_image.get_header().get_version()),
@@ -1245,8 +1270,20 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
                 (Box::new(map_file(&kmod_path)?), None)
             } else {
                 println!("- KMI: {kmi}");
-                let name = format!("{kmi}_kernelsu.ko");
-                let vivo_name = format!("{kmi}_vivo_kernelsu.ko");
+                #[cfg(not(target_os = "android"))]
+                println!("- Arch: {arch}");
+
+                #[cfg(target_os = "android")]
+                let (name, vivo_name) = (
+                    format!("{kmi}_kernelsu.ko"),
+                    format!("{kmi}_vivo_kernelsu.ko"),
+                );
+                #[cfg(not(target_os = "android"))]
+                let (name, vivo_name) = (
+                    format!("{arch}/{kmi}_kernelsu.ko"),
+                    format!("{arch}/{kmi}_vivo_kernelsu.ko"),
+                );
+
                 let kernelsu_ko =
                     assets::get_asset(&name).with_context(|| format!("Failed to load {name}"))?;
                 let kernelsu_vivo_ko = assets::get_asset(&vivo_name).ok();
@@ -1261,7 +1298,14 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
         } else if let Some(init_path) = init {
             Box::new(map_file(&init_path)?)
         } else {
-            assets::get_asset("ksuinit").context("Failed to load ksuinit")?
+            #[cfg(not(target_os = "android"))]
+            {
+                assets::get_asset(&format!("{arch}/ksuinit")).context("Failed to load ksuinit")?
+            }
+            #[cfg(target_os = "android")]
+            {
+                assets::get_asset("ksuinit").context("Failed to load ksuinit")?
+            }
         };
 
         let (mut cpio, vendor_ramdisk_idx) =
