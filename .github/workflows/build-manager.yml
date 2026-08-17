@@ -653,27 +653,6 @@ jobs:
 
 
       # --------------------------------------------------------
-      # Rename final APK so variant is obvious
-      # --------------------------------------------------------
-
-      - name: Rename final APK
-        if: ${{ github.event_name == 'pull_request' ||
-          (github.event_name != 'pull_request' &&
-          (github.ref == 'refs/heads/main' ||
-           github.ref == 'refs/heads/dev')) ||
-          github.ref_type == 'tag' }}
-
-        run: |
-          set -e
-
-          APK=$(find ./dist -type f -name "*.apk" | head -n 1)
-
-          test -n "$APK"
-
-          mv "$APK" "./dist/${{ steps.determine.outputs.title }}.apk"
-
-
-      # --------------------------------------------------------
       # Upload final APK
       # --------------------------------------------------------
 

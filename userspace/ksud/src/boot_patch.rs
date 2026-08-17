@@ -516,6 +516,7 @@ pub fn classify_image(image: &Path) -> Result<String> {
             BOOT_PARTITION_BOOT.to_string()
         }
         BootImageVersion::Android(_) => BOOT_PARTITION_INIT_BOOT.to_string(),
+        BootImageVersion::RawRamdisk => BOOT_PARTITION_INIT_BOOT.to_string(),
     })
 }
 
