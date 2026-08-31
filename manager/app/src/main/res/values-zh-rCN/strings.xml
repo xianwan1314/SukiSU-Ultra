@@ -68,7 +68,7 @@
     <string name="home_click_to_learn_kernelsu">了解如何安装 KernelSU 以及如何开发模块</string>
     <string name="home_support_title">支持开发</string>
     <string name="home_support_content">KernelSU 将保持免费开源，向开发者捐赠以表示支持</string>
-    <string name="about_source_code"><![CDATA[在 %1$s 查看源码<br/>加入我们的 %2$s 频道<br/><br/>有动漫人物图片表情包的图像版权为%3$s所有，图像中的知识产权由%4$s 所有。在使用这些文件之前，除了必须遵守 %5$s 以外，还需要遵守向前两者索要使用这些艺术内容的授权。]]></string>
+    <string name="about_source_code"><![CDATA[在 %1$s 查看源码<br/>加入我们的 %2$s 频道<br/><br/>图标以特别的形式授权，怡子曰曰绘制，版权明风OuO所有。矢量化图标由本项目提供。]]></string>
     <string name="profile_default">默认</string>
     <string name="profile_template">模板</string>
     <string name="profile_custom">自定义</string>
@@ -136,7 +136,12 @@
     <string name="enable_web_debugging">WebView 调试</string>
     <string name="enable_web_debugging_summary">可用于调试 WebUI，请仅在需要时启用</string>
     <string name="direct_install">直接安装（推荐）</string>
-    <string name="select_file">选择一个文件</string>
+    <string name="select_file">选择文件并修补</string>
+    <string name="download_file">下载文件并修补</string>
+    <string name="download_dialog_title">输入链接</string>
+    <string name="download_dialog_msg">完整 OTA 镜像或 factory 镜像</string>
+    <string name="download_no_boot_partition">镜像中未找到 boot、init_boot 或 vendor_boot 分区</string>
+    <string name="download_probe_failed">探测镜像失败：%1$s</string>
     <string name="install_inactive_slot">安装到未使用的槽位（OTA 后）</string>
     <string name="install_inactive_slot_warning">将在重启后强制切换到另一个槽位！注意只能在 OTA 更新完成后的重启之前使用</string>
     <string name="jailbreak_flash_warning">当前处于**越狱模式**。在**未解锁 Bootloader** 的设备上刷写分区会破坏 AVB（Android 验证启动），可能导致设备**无法开机**。\n\n请确保 Bootloader 已解锁后再继续操作！</string>
@@ -167,6 +172,8 @@
     <string name="settings_sucompat_summary">允许通过 /system/bin/su 获取 Root 权限</string>
     <string name="settings_kernel_umount">卸载模块（内核级）</string>
     <string name="settings_kernel_umount_summary">在内核给需要的应用卸载模块</string>
+    <string name="settings_webview_zygote_umount">为 WebView 卸载模块</string>
+    <string name="settings_webview_zygote_umount_summary">防止 WebView 进程泄露信息，但可能会导致模块失效。重启后生效</string>
     <string name="module_install_prompt_with_name">将安装以下模块：%1$s</string>
     <string name="confirm">确认</string>
     <string name="processing">处理中…</string>
@@ -242,6 +249,8 @@
     <string name="show_only_primary_user_apps">只显示主用户应用</string>
     <string name="settings_auto_jailbreak">自动越狱</string>
     <string name="settings_auto_jailbreak_summary">开机检测到 Permissive SELinux 时自动使用 Magica 提权。需要授予本应用自启动权限！</string>
+    <string name="settings_soft_reboot">使用软重启代替重启</string>
+    <string name="settings_soft_reboot_summary">安装、更新或开关模块时使用软重启代替完整重启</string>
     <string name="allow_shell">总是给 shell 授予 Root 权限</string>
     <string name="allow_shell_summary">总是允许 adb shell 调用 SU 命令，非必要请勿开启！</string>
     <string name="enable_adb">启动时强制启用 ADB 调试</string>
@@ -419,6 +428,25 @@
     <string name="allowlist_restore_summary_picker">选择备份文件进行导入</string>
     <string name="allowlist_restore_success">还原成功,重启生效</string>
     <string name="allowlist_restore_failed">还原失败</string>
+    <!-- CPU Spoof -->
+    <string name="tools_spoof_cpu_title">CPU 身份伪装</string>
+    <string name="tools_spoof_cpu_summary">伪装 CPU MIDR、HWCAP 和 vvar</string>
+    <string name="spoof_cpu_dialog_title">CPU 身份伪装</string>
+    <string name="spoof_cpu_apply">应用</string>
+    <string name="spoof_cpu_cancel">取消</string>
+    <string name="spoof_cpu_field_midr">MIDR (十六进制)</string>
+    <string name="spoof_cpu_field_bogomips">BogoMIPS</string>
+    <string name="spoof_cpu_field_hwcap">HWCAP (十六进制)</string>
+    <string name="spoof_cpu_field_hwcap2">HWCAP2 (十六进制)</string>
+    <string name="spoof_cpu_field_cores">目标 CPU 核心</string>
+    <string name="spoof_cpu_midr_preset_label">预设 SoC</string>
+    <string name="spoof_cpu_midr_custom">自定义</string>
+    <string name="spoof_cpu_cores_all">所有核心</string>
+    <string name="spoof_cpu_cores_format">CPU %d</string>
+    <string name="spoof_cpu_apply_success">CPU 伪装应用成功</string>
+    <string name="spoof_cpu_apply_failed">CPU 伪装应用失败</string>
+    <string name="spoof_cpu_apply_partial_failure">部分成功：%1$d 成功，%2$d 失败</string>
+    <string name="spoof_cpu_warning">将影响所有后续进程的 CPU 识别。请谨慎操作。</string>
     <!-- Zip File Type Labels -->
     <string name="zip_type_module"> (模块)</string>
     <string name="zip_type_kernel"> (内核)</string>
@@ -600,4 +628,8 @@
     <string name="home_kernel_full_version">内核完整版本</string>
     <string name="settings_show_fullstatus">显示完整状态</string>
     <string name="settings_show_fullstatus_summary">在首页信息卡中显示设备的完整状态</string>
+    <string name="home_zygisk_implementation">Zygisk 实现</string>
+    <string name="home_zygisk_not_installed">未安装</string>
+    <string name="home_zygisk_disabled">已禁用</string>
+    <string name="home_zygisk_reboot_required">需要重启</string>
 </resources>

@@ -1036,6 +1036,65 @@ fn resolve_module_icon_path(
     }
 }
 
+/// Determine whether the provided module is a Zygisk implementation / provider
+pub fn is_zygisk_provider(module_id: &str) -> bool {
+    let id_lower = module_id.to_ascii_lowercase();
+    matches!(
+        id_lower.as_str(),
+        "zygisksu" | "rezygisk" | "nyazygisk" | "neozygisk"
+    )
+}
+
+/// Check whether a process whose name satisfies the predicate is running in /proc
+pub fn is_process_running_matching<F>(predicate: F) -> bool
+where
+    F: Fn(&str) -> bool,
+{
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return false;
+    };
+    for entry in entries.flatten() {
+        let file_name = entry.file_name();
+        let file_str = file_name.to_string_lossy();
+        if file_str.chars().all(|c| c.is_ascii_digit()) {
+            let comm_path = entry.path().join("comm");
+            if let Ok(comm) = std::fs::read_to_string(&comm_path) {
+                let name = comm.trim();
+                if predicate(name) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Check whether a process with the given name is running in /proc
+pub fn is_process_running(proc_name: &str) -> bool {
+    is_process_running_matching(|name| name == proc_name)
+}
+
+/// Determine whether the Zygisk provider's daemon is actually running
+pub fn is_zygisk_daemon_running(module_id: &str) -> bool {
+    let id_lower = module_id.to_ascii_lowercase();
+    match id_lower.as_str() {
+        "rezygisk" => is_process_running_matching(|name| name.starts_with("rezygisk")),
+        "zygisksu" | "nyazygisk" | "neozygisk" => is_process_running_matching(|name| {
+            name.starts_with("zygiskd")
+                || name.starts_with("zygisk-ptrace")
+                || name.starts_with("zygisk-comp")
+                || name.starts_with("zygisk_comp")
+                || name.starts_with("nyazygisk")
+                || name.starts_with("neozygisk")
+        }),
+        _ => is_process_running_matching(|name| {
+            name.starts_with("zygiskd")
+                || name.starts_with("zygisk-ptrace")
+                || name.starts_with("rezygisk")
+        }),
+    }
+}
+
 fn list_module(path: &str) -> Vec<HashMap<String, String>> {
     // Load all module configs once to minimize I/O overhead
     let all_configs = match crate::module_config::get_all_module_configs() {
@@ -1081,12 +1140,22 @@ fn list_module(path: &str) -> Vec<HashMap<String, String>> {
             }
         }
 
-        // Add enabled, update, remove, web, action flags
+        // Add enabled, update, remove, web, action, zygisk flags
         let enabled = !path.join(defs::DISABLE_FILE_NAME).exists();
         let update = path.join(defs::UPDATE_FILE_NAME).exists();
         let remove = path.join(defs::REMOVE_FILE_NAME).exists();
         let web = path.join(defs::MODULE_WEB_DIR).exists();
         let action = path.join(defs::MODULE_ACTION_SH).exists();
+        let is_provider = module_prop_map
+            .get("id")
+            .is_some_and(|id| is_zygisk_provider(id));
+        let zygisk_running = if is_provider {
+            module_prop_map
+                .get("id")
+                .is_some_and(|id| is_zygisk_daemon_running(id))
+        } else {
+            false
+        };
         let need_mount = path.join("system").exists() && !path.join("skip_mount").exists();
 
         module_prop_map.insert("enabled".to_owned(), enabled.to_string());
@@ -1094,6 +1163,9 @@ fn list_module(path: &str) -> Vec<HashMap<String, String>> {
         module_prop_map.insert("remove".to_owned(), remove.to_string());
         module_prop_map.insert("web".to_owned(), web.to_string());
         module_prop_map.insert("action".to_owned(), action.to_string());
+        module_prop_map.insert("zygisk".to_owned(), is_provider.to_string());
+        module_prop_map.insert("zygisk_provider".to_owned(), is_provider.to_string());
+        module_prop_map.insert("zygisk_running".to_owned(), zygisk_running.to_string());
         module_prop_map.insert("mount".to_owned(), need_mount.to_string());
 
         resolve_module_icon_path(&mut module_prop_map, "actionIcon", &path);

@@ -131,10 +131,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import com.sukisu.ultra.Natives
 import com.sukisu.ultra.R
 import com.sukisu.ultra.data.model.Module
 import com.sukisu.ultra.data.model.ModuleUpdateInfo
+import com.sukisu.ultra.data.repository.isSoftRebootPreferred
 import com.sukisu.ultra.ui.component.ObserveAsEvents
 import com.sukisu.ultra.ui.component.ScrollToTopOnChange
 import com.sukisu.ultra.ui.component.dialog.rememberConfirmDialog
@@ -257,8 +257,8 @@ fun ModulePagerMaterial(
                 // Cancel the previous reboot snackbar so a new one replaces it instead of queueing
                 snackbarJob.value?.cancel()
                 snackBarHost.currentSnackbarData?.dismiss()
-                // A full reboot drops the jailbreak, a soft reboot still applies module changes
-                val softReboot = Natives.isLateLoadMode
+                // Soft reboot keeps the jailbreak and still applies module changes
+                val softReboot = isSoftRebootPreferred()
                 snackbarJob.value = scope.launch {
                     val result = snackBarHost.showSnackbar(
                         message = event.message,
@@ -828,14 +828,27 @@ private fun ModuleItem(
                 }
             )
 
-            Row(modifier = Modifier.padding(vertical = 4.dp)) {
-                if (module.metamodule) {
-                    StatusTag(
-                        "META",
-                        modifier = Modifier.padding(bottom = 4.dp),
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        backgroundColor = MaterialTheme.colorScheme.primary
-                    )
+            if (module.metamodule || module.zygisk) {
+                Row(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (module.metamodule) {
+                        StatusTag(
+                            "META",
+                            modifier = Modifier.padding(bottom = 4.dp),
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            backgroundColor = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    if (module.zygisk) {
+                        StatusTag(
+                            "ZYGISK",
+                            modifier = Modifier.padding(bottom = 4.dp),
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            backgroundColor = MaterialTheme.colorScheme.tertiaryContainer
+                        )
+                    }
                 }
             }
 

@@ -88,7 +88,7 @@
     <string name="home_click_to_learn_kernelsu">Learn how to install KernelSU and use modules.</string>
     <string name="home_support_title">Support Us</string>
     <string name="home_support_content">KernelSU is, and always will be, free, and open source. However, you can show us that you care by making a donation.</string>
-    <string name="about_source_code"><![CDATA[View source code at %1$s<br/>Join our %2$s channel<br/><br/>The images of the files with anime character sticker are copyrighted by %3$s, the Brand Intellectual Property in the images is owned by %4$s. Before using these files, in addition to complying with %5$s, you also need to comply with the authorization of the two authors to use these artistic contents]]></string>
+    <string name="about_source_code"><![CDATA[View source code at %1$s<br/>Join our %2$s channel<br/><br/>The icons are licensed under a special arrangement: drawn by 怡子曰曰, the copyright is held by 明风 OuO, and the vectorized icons are provided by this project.]]></string>
     <string name="profile" translatable="false">App Profile</string>
     <string name="profile_default">Default</string>
     <string name="profile_template">Template</string>
@@ -158,7 +158,12 @@
     <string name="enable_web_debugging">WebView debugging</string>
     <string name="enable_web_debugging_summary">Can be used to debug WebUI. Please enable only when needed.</string>
     <string name="direct_install">Direct install (Recommended)</string>
-    <string name="select_file">Select a file</string>
+    <string name="select_file">Select a file and patch</string>
+    <string name="download_file">Download a file and patch</string>
+    <string name="download_dialog_title">Enter URL</string>
+    <string name="download_dialog_msg">Full OTA image or factory image</string>
+    <string name="download_no_boot_partition">No boot, init_boot or vendor_boot partition found in the image</string>
+    <string name="download_probe_failed">Failed to probe the image: %1$s</string>
     <string name="install_inactive_slot">Install to inactive slot (After OTA)</string>
     <string name="install_inactive_slot_warning">Your device will be **FORCED** to boot to the current inactive slot after a reboot!\nOnly use this option after OTA is done.\nContinue?</string>
     <string name="jailbreak_flash_warning">You are in **Jailbreak mode**. Flashing a partition on a device with a **locked bootloader** will break AVB (Android Verified Boot) and may cause the device to **fail to boot**.\n\nMake sure your bootloader is unlocked before proceeding!</string>
@@ -188,6 +193,8 @@
     <string name="settings_sucompat_summary">Allow Root access via /system/bin/su, in new processes</string>
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">Unmount modules from kernel in App Profile</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
     <string name="settings_selinux_hide">Hide SELinux modification</string>
     <string name="settings_selinux_hide_summary">Prevent applications from detecting SELinux modifications</string>
     <string name="settings_selinux_hide_reboot_required">Reboot to take effect</string>
@@ -272,6 +279,8 @@
     <string name="show_only_primary_user_apps">Show only primary user apps</string>
     <string name="settings_auto_jailbreak">Auto jailbreak</string>
     <string name="settings_auto_jailbreak_summary">Automatically use Magica to escalate privileges when Permissive SELinux is detected at boot. Requires granting autostart permission to this app.</string>
+    <string name="settings_soft_reboot">Soft restart instead of reboot</string>
+    <string name="settings_soft_reboot_summary">Use soft restart instead of a full reboot when installing, updating, or toggling modules.</string>
     <string name="allow_shell">Always grant Root to Shell</string>
     <string name="allow_shell_summary">Always allow adb shell to call SU command. Do not enable this unless absolutely necessary.</string>
     <string name="kernel_spoof_release">Kernel Release</string>
@@ -430,6 +439,25 @@
     <string name="allowlist_restore_summary_picker">Choose a backup file to import</string>
     <string name="allowlist_restore_success">Restoration successful. Changes will take effect after restart</string>
     <string name="allowlist_restore_failed">Restore failed</string>
+    <!-- CPU Spoof -->
+    <string name="tools_spoof_cpu_title">CPU identity spoofing</string>
+    <string name="tools_spoof_cpu_summary">Mask real CPU MIDR, HWCAP and vvar</string>
+    <string name="spoof_cpu_dialog_title">CPU Identity Spoofing</string>
+    <string name="spoof_cpu_apply">Apply</string>
+    <string name="spoof_cpu_cancel">Cancel</string>
+    <string name="spoof_cpu_field_midr">MIDR (hex)</string>
+    <string name="spoof_cpu_field_bogomips">BogoMIPS</string>
+    <string name="spoof_cpu_field_hwcap">HWCAP (hex)</string>
+    <string name="spoof_cpu_field_hwcap2">HWCAP2 (hex)</string>
+    <string name="spoof_cpu_field_cores">Target CPU cores</string>
+    <string name="spoof_cpu_midr_preset_label">Preset SoC</string>
+    <string name="spoof_cpu_midr_custom">Custom</string>
+    <string name="spoof_cpu_cores_all">All cores</string>
+    <string name="spoof_cpu_cores_format">CPU %d</string>
+    <string name="spoof_cpu_apply_success">CPU spoofing applied successfully</string>
+    <string name="spoof_cpu_apply_failed">Failed to apply CPU spoofing</string>
+    <string name="spoof_cpu_apply_partial_failure">Partial success: %1$d succeeded, %2$d failed</string>
+    <string name="spoof_cpu_warning">Will affect CPU identification for all subsequent processes. Proceed with caution.</string>
     <!-- Zip File Type Labels -->
     <string name="zip_type_module"> (Module)</string>
     <string name="zip_type_kernel"> (Kernel)</string>
@@ -612,4 +640,8 @@
     <string name="home_kernel_full_version">Kernel full version</string>
     <string name="settings_show_fullstatus">Show FullStatus</string>
     <string name="settings_show_fullstatus_summary">Display device FullStatus in home page info card</string>
+    <string name="home_zygisk_implementation">Zygisk implementation</string>
+    <string name="home_zygisk_not_installed">Not installed</string>
+    <string name="home_zygisk_disabled">Disabled</string>
+    <string name="home_zygisk_reboot_required">Reboot required</string>
 </resources>

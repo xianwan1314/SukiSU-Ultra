@@ -131,12 +131,17 @@
     <string name="grant_root_failed">獲取 root 失敗！</string>
     <string name="home_pr_build_warning">當前為 PR 除錯構建，請勿在生產環境中使用！</string>
     <string name="home_pr_kernel_warning">當前核心包含 PR 簽名支援，這不是一個生產核心！</string>
+    <string name="select_file">選擇並修補檔案</string>
+    <string name="download_file">下載並修補檔案</string>
+    <string name="download_dialog_title">輸入連結</string>
+    <string name="download_dialog_msg">完整 OTA 映像或原廠映像</string>
+    <string name="download_no_boot_partition">映像中找不到 boot、init_boot 或 vendor_boot 分割區</string>
+    <string name="download_probe_failed">偵測映像失敗：%1$s</string>
     <string name="action">執行</string>
     <string name="open">開啟</string>
     <string name="enable_web_debugging">WebView 除錯</string>
     <string name="enable_web_debugging_summary">可用於除錯 WebUI，請僅在需要時啟用</string>
     <string name="direct_install">直接安裝（推薦）</string>
-    <string name="select_file">選擇一個檔案</string>
     <string name="install_inactive_slot">安裝到未使用的槽位（OTA 後）</string>
     <string name="install_inactive_slot_warning">將在重啟後強制切換到另一個槽位！注意只能在 OTA 更新完成後的重啟之前使用</string>
     <string name="jailbreak_flash_warning">當前處於**越獄模式**。在**未解鎖 Bootloader** 的裝置上刷寫分割槽會破壞 AVB（Android 驗證啟動），可能導致裝置**無法開機**。\n\n請確保 Bootloader 已解鎖後再繼續操作！</string>
@@ -384,6 +389,25 @@
     <string name="allowlist_restore_summary_picker">選擇備份文件進行導入</string>
     <string name="allowlist_restore_success">還原成功,重啟生效</string>
     <string name="allowlist_restore_failed">還原失敗</string>
+    <!-- CPU Spoof -->
+    <string name="tools_spoof_cpu_title">CPU 身份偽裝</string>
+    <string name="tools_spoof_cpu_summary">偽裝 CPU MIDR、HWCAP 和 vvar</string>
+    <string name="spoof_cpu_dialog_title">CPU 身份偽裝</string>
+    <string name="spoof_cpu_apply">應用</string>
+    <string name="spoof_cpu_cancel">取消</string>
+    <string name="spoof_cpu_field_midr">MIDR (十六進制)</string>
+    <string name="spoof_cpu_field_bogomips">BogoMIPS</string>
+    <string name="spoof_cpu_field_hwcap">HWCAP (十六進制)</string>
+    <string name="spoof_cpu_field_hwcap2">HWCAP2 (十六進制)</string>
+    <string name="spoof_cpu_field_cores">目標 CPU 核心</string>
+    <string name="spoof_cpu_midr_preset_label">預設 SoC</string>
+    <string name="spoof_cpu_midr_custom">自訂</string>
+    <string name="spoof_cpu_cores_all">所有核心</string>
+    <string name="spoof_cpu_cores_format">CPU %d</string>
+    <string name="spoof_cpu_apply_success">CPU 偽裝應用成功</string>
+    <string name="spoof_cpu_apply_failed">CPU 偽裝應用失敗</string>
+    <string name="spoof_cpu_apply_partial_failure">部分成功：%1$d 成功，%2$d 失敗</string>
+    <string name="spoof_cpu_warning">將影響所有後續進程的 CPU 識別。請謹慎操作。</string>
     <!-- Zip File Type Labels -->
     <string name="zip_type_module"> (模塊)</string>
     <string name="zip_type_kernel"> (內核)</string>
@@ -599,4 +623,8 @@
     <string name="sort_by_update_time">更新時間</string>
     <string name="sort_reverse">倒序</string>
     <string name="uapi_mismatch">管理器 uapi 版本 (%1$d) 與 KernelSU 驅動 uapi 版本 (%2$d) 不匹配。</string>
+    <string name="home_zygisk_implementation">Zygisk 實作</string>
+    <string name="home_zygisk_not_installed">未安裝</string>
+    <string name="home_zygisk_disabled">已停用</string>
+    <string name="home_zygisk_reboot_required">需要重啟</string>
 </resources>
