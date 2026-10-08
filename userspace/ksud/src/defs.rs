@@ -1,6 +1,13 @@
 #[cfg(target_os = "android")]
 mod android {
     use const_format::concatcp;
+    use std::time::Duration;
+
+    pub const BOOT_STAGE_TIMEOUT: Duration = Duration::from_secs(35);
+    pub const EMULATED_SOFT_REBOOT_TIMEOUT: Duration = Duration::from_secs(5);
+    pub const WAITSYS_READY_TIMEOUT: Duration = Duration::from_secs(2);
+    pub const WAITSYS_STOP_TIMEOUT: Duration = Duration::from_secs(5);
+    pub const BOOTLOG_TIMEOUT: &str = "30s";
 
     pub const ADB_DIR: &str = "/data/adb/";
     pub const WORKING_DIR: &str = concatcp!(ADB_DIR, "ksu/");
@@ -31,7 +38,6 @@ mod android {
 
     pub const MODULE_WEB_DIR: &str = "webroot";
     pub const MODULE_ACTION_SH: &str = "action.sh";
-    pub const MODULE_ZYGISK_DIR: &str = "zygisk";
     pub const DISABLE_FILE_NAME: &str = "disable";
     pub const UPDATE_FILE_NAME: &str = "update";
     pub const REMOVE_FILE_NAME: &str = "remove";
@@ -55,7 +61,6 @@ mod android {
     pub const DEFAULT_PACKAGE_NAME: &str = env!("KSU_PACKAGE_NAME");
 
     pub const UMOUNT_CONFIG_PATH: &str = concatcp!(WORKING_DIR, ".umount");
-    pub const EXEC_STAGE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 }
 
 #[allow(unused)]
