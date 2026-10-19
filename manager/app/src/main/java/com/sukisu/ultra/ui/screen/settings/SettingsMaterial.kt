@@ -25,13 +25,16 @@ import androidx.compose.material.icons.filled.Fence
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LayersClear
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.SnackbarHostState
@@ -54,6 +57,7 @@ import com.sukisu.ultra.R
 import com.sukisu.ultra.ui.UiMode
 import com.sukisu.ultra.ui.component.KsuIsValid
 import com.sukisu.ultra.ui.component.material.ExpressiveScaffold
+import com.sukisu.ultra.ui.component.material.IconTile
 import com.sukisu.ultra.ui.component.material.SegmentedColumn
 import com.sukisu.ultra.ui.component.material.SegmentedDropdownItem
 import com.sukisu.ultra.ui.component.material.SegmentedListItem
@@ -73,7 +77,6 @@ fun SettingPagerMaterial(
     uiState: SettingsUiState,
     actions: SettingsScreenActions,
     bottomInnerPadding: Dp,
-    isKpmAvailable: Boolean,
     isSusfsSupported: Boolean
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
@@ -158,7 +161,7 @@ fun SettingPagerMaterial(
                             onClick = actions.onOpenTheme,
                             headlineContent = { Text(stringResource(id = R.string.settings_theme)) },
                             supportingContent = { Text(stringResource(id = R.string.settings_theme_summary)) },
-                            leadingContent = { Icon(Icons.Filled.Palette, stringResource(id = R.string.settings_theme)) },
+                            leadingContent = { IconTile(Icons.Filled.Palette, stringResource(id = R.string.settings_theme)) },
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -188,7 +191,25 @@ fun SettingPagerMaterial(
                             onClick = actions.onOpenProfileTemplate,
                             headlineContent = { Text(profileTemplate) },
                             supportingContent = { Text(stringResource(id = R.string.settings_profile_template_summary)) },
-                            leadingContent = { Icon(Icons.Filled.Description, profileTemplate) },
+                            leadingContent = { IconTile(Icons.Filled.Description, profileTemplate) },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    null
+                                )
+                            }
+                        )
+                    }
+                )
+                SegmentedColumn(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
+                    content = listOf {
+                        val extensionsTitle = stringResource(R.string.extension_section_title)
+                        SegmentedListItem(
+                            onClick = actions.onOpenExtensions,
+                            headlineContent = { Text(extensionsTitle) },
+                            supportingContent = { Text(stringResource(R.string.extension_section_summary)) },
+                            leadingContent = { IconTile(Icons.Filled.Memory, extensionsTitle) },
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -206,28 +227,7 @@ fun SettingPagerMaterial(
                             onClick = actions.onOpenTools,
                             headlineContent = { Text(toolsTitle) },
                             supportingContent = { Text(stringResource(id = R.string.settings_tools_summary)) },
-                            leadingContent = { Icon(Icons.Filled.Fence, toolsTitle) },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    null
-                                )
-                            }
-                        )
-                    }
-                )
-            }
-
-            val kpmTitle = stringResource(id = R.string.kpm_title)
-            if (isKpmAvailable) {
-                SegmentedColumn(
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
-                    content = listOf {
-                        SegmentedListItem(
-                            onClick = actions.onOpenKpm,
-                            headlineContent = { Text(kpmTitle) },
-                            supportingContent = { Text(stringResource(id = R.string.settings_kpm_summary)) },
-                            leadingContent = { Icon(Icons.Filled.Fence, kpmTitle) },
+                            leadingContent = { IconTile(Icons.Filled.Fence, toolsTitle) },
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -241,25 +241,23 @@ fun SettingPagerMaterial(
 
             val susfsTitle = stringResource(id = R.string.susfs_config_title)
             if (isSusfsSupported) {
-                if (isKpmAvailable) {
-                    SegmentedColumn(
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
-                        content = listOf {
-                            SegmentedListItem(
-                                onClick = actions.onOpenSusfsConfig,
-                                headlineContent = { Text(susfsTitle) },
-                                supportingContent = { Text(stringResource(id = R.string.settings_kpm_summary)) },
-                                leadingContent = { Icon(Icons.Filled.Fence, susfsTitle) },
-                                trailingContent = {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                        null
-                                    )
-                                }
-                            )
-                        }
-                    )
-                }
+                SegmentedColumn(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
+                    content = listOf {
+                        SegmentedListItem(
+                            onClick = actions.onOpenSusfsConfig,
+                            headlineContent = { Text(susfsTitle) },
+                            supportingContent = { Text(stringResource(id = R.string.susfs_config_summary)) },
+                            leadingContent = { IconTile(Icons.Filled.Fence, susfsTitle) },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    null
+                                )
+                            }
+                        )
+                    }
+                )
             }
 
             KsuIsValid {
@@ -276,6 +274,7 @@ fun SettingPagerMaterial(
                             val suSummary = when (uiState.suCompatStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
                                 else -> stringResource(id = R.string.settings_sucompat_summary)
                             }
                             SegmentedDropdownItem(
@@ -292,6 +291,7 @@ fun SettingPagerMaterial(
                             val umountSummary = when (uiState.kernelUmountStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
                                 else -> stringResource(id = R.string.settings_kernel_umount_summary)
                             }
                             SegmentedSwitchItem(
@@ -307,6 +307,7 @@ fun SettingPagerMaterial(
                             val selinuxHideSummary = when (uiState.selinuxHideStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
                                 else -> stringResource(id = R.string.settings_selinux_hide_summary)
                             }
                             SegmentedSwitchItem(
@@ -319,9 +320,26 @@ fun SettingPagerMaterial(
                             )
                         },
                         {
+                            val mountHideSummary = when (uiState.mountHideStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_mount_hide_summary)
+                            }
+                            SegmentedSwitchItem(
+                                icon = Icons.Filled.Policy,
+                                title = stringResource(id = R.string.settings_mount_hide),
+                                summary = mountHideSummary,
+                                enabled = uiState.mountHideStatus == "supported",
+                                checked = uiState.isMountHideEnabled,
+                                onCheckedChange = actions.onSetMountHideEnabled
+                            )
+                        },
+                        {
                             val sulogSummary = when (uiState.sulogStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
                                 else -> stringResource(id = R.string.settings_sulog_summary)
                             }
                             SegmentedSwitchItem(
@@ -337,6 +355,7 @@ fun SettingPagerMaterial(
                             val adbRootSummary = when (uiState.adbRootStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
                                 else -> stringResource(id = R.string.settings_adb_root_summary)
                             }
                             SegmentedSwitchItem(
@@ -346,6 +365,22 @@ fun SettingPagerMaterial(
                                 enabled = uiState.adbRootStatus == "supported",
                                 checked = uiState.isAdbRootEnabled,
                                 onCheckedChange = actions.onSetAdbRootEnabled
+                            )
+                        },
+                        {
+                            val shellSuAdbOnlySummary = when (uiState.shellSuAdbOnlyStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_shell_su_adb_only_summary)
+                            }
+                            SegmentedSwitchItem(
+                                icon = Icons.Filled.VerifiedUser,
+                                title = stringResource(id = R.string.settings_shell_su_adb_only),
+                                summary = shellSuAdbOnlySummary,
+                                enabled = uiState.shellSuAdbOnlyStatus == "supported",
+                                checked = uiState.isShellSuAdbOnlyEnabled,
+                                onCheckedChange = actions.onSetShellSuAdbOnlyEnabled
                             )
                         },
                         {
@@ -406,7 +441,7 @@ fun SettingPagerMaterial(
                                 onClick = { showUninstallDialog.value = true },
                                 enabled = !uiState.isLateLoadMode,
                                 headlineContent = { Text(uninstall) },
-                                leadingContent = { Icon(Icons.Filled.Delete, uninstall) }
+                                leadingContent = { IconTile(Icons.Filled.Delete, uninstall) }
                             )
                         }
                     )
@@ -421,7 +456,7 @@ fun SettingPagerMaterial(
                             onClick = { showBottomSheet = true },
                             headlineContent = { Text(stringResource(id = R.string.send_log)) },
                             leadingContent = {
-                                Icon(
+                                IconTile(
                                     Icons.Filled.BugReport,
                                     stringResource(id = R.string.send_log)
                                 )
@@ -433,7 +468,7 @@ fun SettingPagerMaterial(
                             onClick = actions.onOpenAbout,
                             headlineContent = { Text(stringResource(id = R.string.about)) },
                             leadingContent = {
-                                Icon(
+                                IconTile(
                                     Icons.Filled.Info,
                                     stringResource(id = R.string.about)
                                 )

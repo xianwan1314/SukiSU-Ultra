@@ -25,6 +25,12 @@ data class HomeUiState(
     val currentManagerVersionCode: Long,
     val systemInfo: SystemInfo,
     val showFullStatus: Boolean = true,
+    // Root without a SukiSU kernel: pages are browsable but kernel features are unavailable.
+    val isPreviewMode: Boolean = false,
+    // Null until loaded through the root shell; kpmCount stays null when KPM is unavailable.
+    val superuserCount: Int? = null,
+    val moduleCount: Int? = null,
+    val kpmCount: Int? = null,
 ) {
     val isSELinuxPermissive: Boolean
         get() = systemInfo.selinuxStatus == "Permissive"
@@ -65,4 +71,6 @@ data class HomeActions(
     val onInstallClick: () -> Unit,
     val onOpenUrl: (String) -> Unit,
     val onJailbreakClick: () -> Unit = {},
+    val onSuperuserClick: () -> Unit = {},
+    val onModuleClick: () -> Unit = {},
 )

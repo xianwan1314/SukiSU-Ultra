@@ -81,10 +81,14 @@ pub fn run(
         };
 
         if let Some(r) = spoof_release {
-            let _ = write!(params, "spoof_release=\"{r}\" ");
+            // Match the escaping used by boot_patch when writing ksu_config so
+            // values containing '"' or '\' survive kernel param parsing.
+            let escaped = r.replace('\\', "\\\\").replace('"', "\\\"");
+            let _ = write!(params, "spoof_release=\"{escaped}\" ");
         }
         if let Some(v) = spoof_version {
-            let _ = write!(params, "spoof_version=\"{v}\" ");
+            let escaped = v.replace('\\', "\\\\").replace('"', "\\\"");
+            let _ = write!(params, "spoof_version=\"{escaped}\" ");
         }
 
         let params_cstr = std::ffi::CString::new(params.trim())?;
@@ -125,6 +129,8 @@ pub fn run(
 
     utils::install(None, None).context("Failed to install ksud")?;
 
+    crate::hot_install::clean_trash();
+
     // 5. Handle module updates
     if let Err(e) = handle_updated_modules() {
         warn!("handle updated modules failed: {e}");
@@ -148,8 +154,15 @@ pub fn run(
     }
 
     // 7. Initialize features
+    crate::feature::init_forced_features();
     if let Err(e) = crate::feature::init_features() {
         warn!("init features failed: {e}");
+    }
+
+    // 7b. Initialize extensions (forced / module-managed are skipped).
+    crate::extension::init_forced_extensions();
+    if let Err(e) = crate::extension::init_extensions() {
+        warn!("init extensions failed: {e}");
     }
 
     // 8. Execute late-load stage scripts with a shared boot deadline

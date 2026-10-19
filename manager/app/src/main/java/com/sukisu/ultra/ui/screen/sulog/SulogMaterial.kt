@@ -298,6 +298,7 @@ private fun LazyListScope.sulogEntriesSection(
                                     Text(
                                         it,
                                         style = typography.bodySmall,
+                                        fontFamily = FontFamily.Monospace,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -344,6 +345,10 @@ private fun SulogStatusSection(
 
         "managed" -> {
             WarningCard(text = stringResource(R.string.feature_status_managed_summary))
+        }
+
+        "forced" -> {
+            WarningCard(text = stringResource(R.string.feature_status_forced_summary))
         }
 
         "supported" if !state.isSulogEnabled -> {

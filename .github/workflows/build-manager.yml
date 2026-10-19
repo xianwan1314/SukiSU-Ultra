@@ -138,9 +138,7 @@ jobs:
 
   build-lkm:
     needs: generate-key
-
     uses: ./.github/workflows/build-lkm.yml
-
     with:
       expected_size: ${{ needs.generate-key.outputs.expected_size || '' }}
       expected_hash: ${{ needs.generate-key.outputs.expected_hash || '' }}
@@ -153,7 +151,6 @@ jobs:
       expected_size: ${{ needs.generate-key.outputs.expected_size || '' }}
       expected_hash: ${{ needs.generate-key.outputs.expected_hash || '' }}
     secrets: inherit
-
 
   build-ksuinit:
     uses: ./.github/workflows/ksuinit.yml

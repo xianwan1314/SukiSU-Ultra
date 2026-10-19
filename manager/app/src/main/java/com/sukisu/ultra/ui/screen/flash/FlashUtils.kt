@@ -79,6 +79,7 @@ sealed class FlashIt : Parcelable {
         val allowShell: Boolean = false,
         val enableAdb: Boolean = false,
         val backup: Boolean = false,
+        val blockModules: String = "",
         val spoofRelease: String = "",
         val spoofVersion: String = "",
     ) : FlashIt()
@@ -91,6 +92,7 @@ sealed class FlashIt : Parcelable {
         val allowShell: Boolean = false,
         val enableAdb: Boolean = false,
         val backup: Boolean = false,
+        val blockModules: String = "",
         val spoofRelease: String = "",
         val spoofVersion: String = "",
     ) : FlashIt()
@@ -110,14 +112,16 @@ fun flashModulesSequentially(
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit
 ): FlashResult {
+    var needsReboot = false
     for (uri in uris) {
         flashModule(uri, onStdout, onStderr).apply {
+            needsReboot = needsReboot || showReboot
             if (code != 0) {
-                return FlashResult(code, err, showReboot)
+                return FlashResult(code, err, needsReboot)
             }
         }
     }
-    return FlashResult(0, "", true)
+    return FlashResult(0, "", needsReboot)
 }
 
 fun flashIt(
@@ -135,6 +139,7 @@ fun flashIt(
             flashIt.allowShell,
             flashIt.enableAdb,
             flashIt.backup,
+            flashIt.blockModules,
             flashIt.spoofRelease,
             flashIt.spoofVersion,
             onStdout,
@@ -148,6 +153,7 @@ fun flashIt(
             flashIt.allowShell,
             flashIt.enableAdb,
             flashIt.backup,
+            flashIt.blockModules,
             flashIt.spoofRelease,
             flashIt.spoofVersion,
             onStdout,
@@ -226,7 +232,7 @@ fun saveLog(
             val date = format.format(Date())
             val file = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "KernelSU_install_log_${date}.log"
+                "SukiSU_install_log_${date}.log"
             )
             file.writeText(logContent.toString())
             showMessage("Log saved to ${file.absolutePath}")

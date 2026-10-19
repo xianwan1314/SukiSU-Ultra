@@ -7,7 +7,7 @@ use log::{LevelFilter, error, info};
 
 use crate::boot_patch::{BootPatchArgs, BootRestoreArgs, VendorBootRmvrArgs};
 use crate::lkm_image::BootPatchV2Args;
-use crate::module::regenerate_preinit_rc;
+use crate::module::regenerate_preinit;
 #[cfg(target_arch = "aarch64")]
 use crate::susfs;
 use crate::{
@@ -124,6 +124,12 @@ enum Commands {
         command: Feature,
     },
 
+    /// Manage kernel extensions (KPM, CPU spoof, umount paths, dynamic manager)
+    Extension {
+        #[command(subcommand)]
+        command: Extension,
+    },
+
     /// Patch boot or init_boot images to apply KernelSU
     BootPatch(BootPatchArgs),
 
@@ -188,6 +194,12 @@ enum Commands {
     Susfs {
         #[command(subcommand)]
         command: Susfs,
+    },
+
+    /// Manage dynamic userspace managers
+    Manager {
+        #[command(subcommand)]
+        command: Manager,
     },
 }
 
@@ -372,6 +384,12 @@ enum Module {
     /// list all modules
     List,
 
+    /// preinit actions run before SELinux policy is loaded
+    Preinit {
+        #[command(subcommand)]
+        command: PreinitCmd,
+    },
+
     /// manage module configuration
     Config {
         /// target internal module name (resolved as internal.<name>)
@@ -380,6 +398,14 @@ enum Module {
         #[command(subcommand)]
         command: ModuleConfigCmd,
     },
+}
+
+#[derive(clap::Subcommand, Debug)]
+enum PreinitCmd {
+    /// show per-module preinit state for the next boot
+    Status,
+    /// re-enable preinit after it was disabled by repeated failed boots
+    Reset,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -468,7 +494,8 @@ enum Profile {
 enum Feature {
     /// Get feature value and support status
     Get {
-        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide)
+        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide,
+        /// shell_su_adb_only, mount_hide)
         id: String,
         /// Read from config file
         #[arg(long, default_value_t = false)]
@@ -486,9 +513,10 @@ enum Feature {
     /// List all available features
     List,
 
-    /// Check feature status (supported/unsupported/managed)
+    /// Check feature status (supported/unsupported/managed/forced)
     Check {
-        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide)
+        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide,
+        /// shell_su_adb_only, mount_hide)
         id: String,
     },
 
@@ -496,6 +524,42 @@ enum Feature {
     Load,
 
     /// Save current kernel feature states to file
+    Save,
+}
+
+#[derive(clap::Subcommand, Debug)]
+#[clap(name = "extension")]
+enum Extension {
+    /// Get extension value and support status
+    Get {
+        /// Extension ID or name (kpm, cpu_spoof, umount_paths, dynamic_manager)
+        id: String,
+        /// Read from config file
+        #[arg(long, default_value_t = false)]
+        config: bool,
+    },
+
+    /// Set extension sticky value (the toggle bit shown in UI)
+    Set {
+        /// Extension ID or name
+        id: String,
+        /// Extension value (0=disable, 1=enable)
+        value: u64,
+    },
+
+    /// List all known extensions with their current kernel support state
+    List,
+
+    /// Check extension status (supported/unsupported/managed/forced)
+    Check {
+        /// Extension ID or name (kpm, cpu_spoof, umount_paths, dynamic_manager)
+        id: String,
+    },
+
+    /// Load extension configuration from file and apply to kernel
+    Load,
+
+    /// Save current extension states to file
     Save,
 }
 
@@ -563,7 +627,7 @@ enum UmountOp {
 
 #[derive(clap::Subcommand, Debug)]
 enum Initrc {
-    /// Regenerate preinit rc file
+    /// Regenerate preinit rc file and preinit dirs
     Refresh,
 }
 
@@ -736,6 +800,24 @@ enum Susfs {
     },
 }
 
+#[derive(clap::Subcommand, Debug)]
+enum Manager {
+    /// List dynamic managers and global state
+    List,
+    /// Authorize a manager using its package, certificate size and SHA-256
+    Add {
+        package: String,
+        cert_size: u32,
+        hash: String,
+    },
+    /// Remove a manager by package name
+    Remove { package: String },
+    /// Enable or disable dynamic managers (true/false or 1/0)
+    SetEnabled { enabled: String },
+    /// Remove all dynamic managers
+    Clear,
+}
+
 /// susfs module subcommands
 #[cfg(target_arch = "aarch64")]
 #[derive(clap::Subcommand, Debug)]
@@ -826,6 +908,13 @@ pub fn run() -> Result<()> {
                     module::run_lua(&id, &function, false, true).map_err(|e| anyhow::anyhow!("{e}"))
                 }
                 Module::List => module::list_modules(),
+                Module::Preinit { command } => match command {
+                    PreinitCmd::Status => {
+                        crate::preinit::print_status();
+                        Ok(())
+                    }
+                    PreinitCmd::Reset => crate::preinit::reset_bootcount(),
+                },
                 Module::Config { internal, command } => {
                     let module_id = match internal {
                         Some(internal_name) => format!("internal.{internal_name}"),
@@ -979,6 +1068,47 @@ pub fn run() -> Result<()> {
             Profile::ListTemplates => crate::profile::list_templates(),
         },
 
+        Commands::Manager { command } => match command {
+            Manager::List => {
+                let state = crate::dynamic_manager::manager_get()?;
+                println!("enabled: {}", state.enabled != 0);
+                for entry in state.entries.iter().take(state.count as usize) {
+                    let package = String::from_utf8_lossy(unsafe {
+                        std::slice::from_raw_parts(
+                            entry.package.as_ptr().cast::<u8>(),
+                            entry.package.len(),
+                        )
+                    })
+                    .trim_end_matches('\0')
+                    .to_string();
+                    let hash = String::from_utf8_lossy(unsafe {
+                        std::slice::from_raw_parts(
+                            entry.hash.as_ptr().cast::<u8>(),
+                            entry.hash.len(),
+                        )
+                    })
+                    .trim_end_matches('\0')
+                    .to_string();
+                    println!("{package}\t{}\t{hash}\t{}", entry.cert_size, entry.uid);
+                }
+                Ok(())
+            }
+            Manager::Add {
+                package,
+                cert_size,
+                hash,
+            } => crate::dynamic_manager::manager_add(&package, cert_size, &hash),
+            Manager::Remove { package } => crate::dynamic_manager::manager_remove(&package),
+            Manager::SetEnabled { enabled } => {
+                let enabled = match enabled.as_str() {
+                    "1" | "true" => true,
+                    "0" | "false" => false,
+                    _ => anyhow::bail!("enabled must be true, false, 1, or 0"),
+                };
+                crate::dynamic_manager::manager_set_enabled(enabled)
+            }
+            Manager::Clear => crate::dynamic_manager::manager_clear(),
+        },
         Commands::Feature { command } => match command {
             Feature::Get { id, config } => {
                 if config {
@@ -996,12 +1126,29 @@ pub fn run() -> Result<()> {
             Feature::Load => crate::feature::load_config_and_apply(),
             Feature::Save => crate::feature::save_config(),
         },
+        Commands::Extension { command } => match command {
+            Extension::Get { id, config } => {
+                if config {
+                    crate::extension::get_extension_config_cli(&id)
+                } else {
+                    crate::extension::get_extension_cli(&id)
+                }
+            }
+            Extension::Set { id, value } => crate::extension::set_extension_cli(&id, value),
+            Extension::List => {
+                crate::extension::list_extensions();
+                Ok(())
+            }
+            Extension::Check { id } => crate::extension::check_extension(&id),
+            Extension::Load => crate::extension::load_config_and_apply(),
+            Extension::Save => crate::extension::save_config(),
+        },
 
         Commands::Debug { command } => match command {
             Debug::SetManager { apk } => debug::set_manager(&apk),
             Debug::GetSign { apk } => {
                 let sign = apk_sign::get_apk_signature(&apk)?;
-                println!("size: {:#x}, hash: {}", sign.0, sign.1);
+                println!("size: {}, hash: {}", sign.0, sign.1);
                 Ok(())
             }
             Debug::Version => {
@@ -1134,7 +1281,7 @@ pub fn run() -> Result<()> {
             } => ksucalls::set_spoof_cpu(cpu, midr, bogomips, hwcap, hwcap2),
         },
         Commands::Initrc { command } => match command {
-            Initrc::Refresh => regenerate_preinit_rc(),
+            Initrc::Refresh => regenerate_preinit(),
         },
         Commands::Umount { command } => match command {
             Umount::Add { mnt, flags } => ksucalls::umount_list_add(&mnt, flags),

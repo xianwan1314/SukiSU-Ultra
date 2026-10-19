@@ -66,7 +66,6 @@ import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -102,6 +101,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -118,6 +118,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -236,6 +237,7 @@ fun ModulePagerMaterial(
                 html = it.html,
                 confirm = it.confirm,
                 dismiss = it.dismiss,
+                restricted = it.restricted,
             )
         }
     }
@@ -456,6 +458,20 @@ fun ModulePagerMaterial(
                 updateInfoMap = uiState.updateInfo,
                 actions = actions,
                 onModuleAddShortcut = { module, type -> onModuleAddShortcut(module, type) },
+                header = if (uiState.moduleList.isEmpty()) null else {
+                    {
+                        Text(
+                            text = stringResource(
+                                R.string.module_summary,
+                                uiState.moduleList.count { it.enabled },
+                                uiState.updateInfo.count { it.value.downloadUrl.isNotBlank() },
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                        )
+                    }
+                },
             )
         }
     }
@@ -486,18 +502,22 @@ private fun ModuleList(
     actions: ModuleActions,
     onModuleAddShortcut: (Module, ShortcutType) -> Unit,
     closeSearch: () -> Unit? = {},
+    header: (@Composable () -> Unit)? = null,
 ) {
     val loadingDialog = rememberLoadingDialog()
     LazyColumn(
         state = listState,
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(13.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
             bottom = 16.dp + bottomInnerPadding + 56.dp + 16.dp
         ),
     ) {
+        if (header != null) {
+            item(key = "header", contentType = "header") { header() }
+        }
         items(displayModules, key = { it.id }, contentType = { "module" }) { module ->
             val scope = rememberCoroutineScope()
             val moduleUpdateInfo = updateInfoMap[module.id] ?: ModuleUpdateInfo.Empty
@@ -551,7 +571,7 @@ private fun ModuleShortcutSheet(
     fun copyShortcutUrl() {
         val url = shortcutState.buildShortcutUrl() ?: return
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("KernelSU deep link", url))
+        clipboard.setPrimaryClip(ClipData.newPlainText("SukiSU deep link", url))
         Toast.makeText(context, resources.getString(R.string.module_shortcut_scheme_copied), Toast.LENGTH_SHORT).show()
     }
 
@@ -702,57 +722,66 @@ private fun ModuleItem(
     val hasDescription = module.description.isNotBlank()
     val maxLinesLimit = LocalModuleDescriptionMaxLines.current
     var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
+    var descriptionCanExpand by rememberSaveable(module.id) { mutableStateOf(true) }
     val canOpenWebUi = module.hasWebUi && !module.remove && module.enabled
     val cardInteractionSource = remember { MutableInteractionSource() }
     val descriptionInteractionSource = remember { MutableInteractionSource() }
+    val banner = rememberModuleBanner(module.id, module.bannerPath)
 
     TonalCard(
         modifier = Modifier.fillMaxWidth(),
         interactionSource = cardInteractionSource,
-        onClick = if (canOpenWebUi) {
-            {
+        onClick = {
+            if (canOpenWebUi) {
                 onOpenWebUi()
                 closeSearch()
+            } else if (hasDescription) {
+                expanded = !expanded
             }
-        } else if (hasDescription) {
-            { expanded = !expanded }
-        } else null
+        }
     ) {
         val haptic = LocalHapticFeedback.current
         val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
 
         Column(
-            modifier = Modifier.padding(16.dp, 14.dp, 16.dp, 10.dp)
+            modifier = Modifier
+                .alpha(if (module.enabled || module.remove) 1f else 0.6f)
+                .moduleBanner(banner, MaterialTheme.colorScheme.surfaceBright)
+                .padding(18.dp, 16.dp, 16.dp, 12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                val moduleVersion = stringResource(id = R.string.module_version)
-                val moduleAuthor = stringResource(id = R.string.module_author)
-
                 Column(
-                    modifier = Modifier.fillMaxWidth(0.8f)
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(
-                        text = module.name,
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.titleMedium,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        textDecoration = textDecoration,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = module.name,
+                            modifier = Modifier.weight(1f, fill = false),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                            textDecoration = textDecoration,
+                        )
+                        if (updateUrl.isNotEmpty()) {
+                            StatusTag(
+                                label = stringResource(R.string.module_update),
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                backgroundColor = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
 
                     Text(
-                        text = "$moduleVersion: ${module.version}",
+                        text = "${module.version}, ${module.author}",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                        textDecoration = textDecoration
-                    )
-
-                    Text(
-                        text = "$moduleAuthor: ${module.author}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
                         textDecoration = textDecoration
                     )
                 }
@@ -788,14 +817,22 @@ private fun ModuleItem(
                                 Modifier.clickable(
                                     interactionSource = descriptionInteractionSource,
                                     indication = null
-                                ) { expanded = !expanded }
+                                ) {
+                                    if (descriptionCanExpand) {
+                                        expanded = !expanded
+                                    } else {
+                                        onOpenWebUi()
+                                        closeSearch()
+                                    }
+                                }
                             } else {
                                 Modifier
                             }
                         ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
-                    textDecoration = textDecoration
+                    textDecoration = textDecoration,
+                    onCanExpandChange = { descriptionCanExpand = it }
                 )
             }
 
@@ -821,11 +858,17 @@ private fun ModuleItem(
                         )
                     }
                 }
+                module.preinitWarning()?.let {
+                    StatusTag(
+                        stringResource(it),
+                        modifier = Modifier.padding(bottom = 4.dp),
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        backgroundColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                }
             }
 
-            HorizontalDivider(thickness = Dp.Hairline)
-
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,

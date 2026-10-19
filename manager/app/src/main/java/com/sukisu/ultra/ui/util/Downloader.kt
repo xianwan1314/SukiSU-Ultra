@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
+import com.sukisu.ultra.data.registry.ExpectedFile
 import com.sukisu.ultra.ksuApp
 import com.sukisu.ultra.ui.util.module.LatestVersionInfo
 import okhttp3.Request
@@ -18,7 +19,9 @@ suspend fun download(
     fileName: String,
     onDownloaded: (Uri) -> Unit = {},
     onDownloading: () -> Unit = {},
-    onProgress: (Int) -> Unit = {}
+    onProgress: (Int) -> Unit = {},
+    expected: ExpectedFile? = null,
+    onFailed: (DownloadManager.DownloadState) -> Unit = {},
 ) {
     onDownloading()
 
@@ -27,15 +30,19 @@ suspend fun download(
         url = url,
         fileName = fileName,
         onCompleted = onDownloaded,
+        expected = expected,
     )
 
-    DownloadManager.downloads
+    val finalState = DownloadManager.downloads
         .onEach { map -> map[downloadId]?.let { onProgress(it.progress) } }
         .first { map ->
             val status = map[downloadId]?.status
             status == DownloadManager.Status.COMPLETED ||
                 status == DownloadManager.Status.FAILED
-        }
+        }[downloadId]
+    if (finalState?.status == DownloadManager.Status.FAILED) {
+        withContext(Dispatchers.Main) { onFailed(finalState) }
+    }
 }
 
 internal suspend fun isDownloadAvailable(uri: Uri): Boolean = withContext(Dispatchers.IO) {
@@ -59,17 +66,16 @@ fun checkNewVersion(): LatestVersionInfo {
                 val json = org.json.JSONObject(body)
                 val changelog = json.optString("body")
 
+                val releaseApkRegex =
+                    Regex("""^SukiSU_v(.+?)_(\d+)-release\.apk$""")
+
                 val assets = json.getJSONArray("assets")
                 for (i in 0 until assets.length()) {
                     val asset = assets.getJSONObject(i)
                     val name = asset.getString("name")
-                    if (!name.endsWith(".apk")) {
-                        continue
-                    }
 
-                    val regex = Regex("v(.+?)_(\\d+)-")
-                    val matchResult = regex.find(name) ?: continue
-                    matchResult.groupValues[1]
+                    val matchResult = releaseApkRegex.find(name) ?: continue
+                    val versionName = matchResult.groupValues[1]
                     val versionCode = matchResult.groupValues[2].toLong()
                     val downloadUrl = asset.getString("browser_download_url")
 

@@ -17,8 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Backup
-import androidx.compose.material.icons.rounded.FolderDelete
-import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material3.Button
@@ -52,6 +50,7 @@ import com.sukisu.ultra.R
 import com.sukisu.ultra.ui.component.KsuIsValid
 import com.sukisu.ultra.ui.component.material.ExpressiveDialog
 import com.sukisu.ultra.ui.component.material.ExpressiveScaffold
+import com.sukisu.ultra.ui.component.material.IconTile
 import com.sukisu.ultra.ui.component.material.SegmentedColumn
 import com.sukisu.ultra.ui.component.material.SegmentedListItem
 import com.sukisu.ultra.ui.component.material.TopBarBackButton
@@ -93,43 +92,6 @@ fun ToolsMaterial(
                         onSelinuxToggle = actions.onSelinuxToggle
                     )
 
-                    SegmentedColumn(
-                        modifier = Modifier.padding(top = 12.dp),
-                        content = listOf({
-                            val umountManager = stringResource(id = R.string.umount_path_manager)
-                            SegmentedListItem(
-                                onClick = actions.onNavigateToUmountManager,
-                                headlineContent = { Text(umountManager) },
-                                leadingContent = {
-                                    Icon(
-                                        Icons.Rounded.FolderDelete,
-                                        umountManager,
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            )
-                        })
-                    )
-
-                    SegmentedColumn(
-                        modifier = Modifier.padding(top = 12.dp),
-                        content = listOf({
-                            val spoofCpuTitle = stringResource(id = R.string.tools_spoof_cpu_title)
-                            SegmentedListItem(
-                                onClick = actions.onOpenSpoofCpuDialog,
-                                headlineContent = { Text(spoofCpuTitle) },
-                                supportingContent = { Text(stringResource(R.string.tools_spoof_cpu_summary)) },
-                                leadingContent = {
-                                    Icon(
-                                        Icons.Rounded.Memory,
-                                        spoofCpuTitle,
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            )
-                        })
-                    )
-
                     AllowlistBackupSectionMaterial(
                         onBackup = actions.onBackupAllowlist,
                         onRestore = actions.onRestoreAllowlist
@@ -154,11 +116,7 @@ private fun SelinuxToggleSectionMaterial(
                 headlineContent = { Text(stringResource(R.string.tools_selinux_toggle)) },
                 supportingContent = { Text(stringResource(R.string.tools_selinux_summary, statusLabel)) },
                 leadingContent = {
-                    Icon(
-                        imageVector = Icons.Rounded.Security,
-                        contentDescription = stringResource(id = R.string.tools_selinux_toggle),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
+                    IconTile(Icons.Rounded.Security, stringResource(id = R.string.tools_selinux_toggle))
                 },
                 trailingContent = {
                     Switch(
@@ -185,11 +143,7 @@ private fun AllowlistBackupSectionMaterial(
                     headlineContent = { Text(stringResource(R.string.allowlist_backup_title)) },
                     supportingContent = { Text(stringResource(R.string.allowlist_backup_summary_picker)) },
                     leadingContent = {
-                        Icon(
-                            imageVector = Icons.Rounded.Backup,
-                            contentDescription = stringResource(R.string.allowlist_backup_title),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        IconTile(Icons.Rounded.Backup, stringResource(R.string.allowlist_backup_title))
                     },
                     onClick = onBackup
                 )
@@ -199,11 +153,7 @@ private fun AllowlistBackupSectionMaterial(
                     headlineContent = { Text(stringResource(R.string.allowlist_restore_title)) },
                     supportingContent = { Text(stringResource(R.string.allowlist_restore_summary_picker)) },
                     leadingContent = {
-                        Icon(
-                            imageVector = Icons.Rounded.Restore,
-                            contentDescription = stringResource(R.string.allowlist_restore_title),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        IconTile(Icons.Rounded.Restore, stringResource(R.string.allowlist_restore_title))
                     },
                     onClick = onRestore
                 )

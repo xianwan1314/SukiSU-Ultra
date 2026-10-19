@@ -11,6 +11,11 @@
 #define LAST_APPLICATION_UID 19999
 #define FIRST_ISOLATED_UID 99000
 #define LAST_ISOLATED_UID 99999
+// App-zygote isolated processes (e.g. Chrome sandboxed renderers) use a separate
+// range and must be treated as isolated too, otherwise their mount view is neither
+// unmounted nor hidden.
+#define FIRST_APP_ZYGOTE_ISOLATED_UID 90000
+#define LAST_APP_ZYGOTE_ISOLATED_UID 98999
 
 void ksu_allowlist_init(void);
 
@@ -24,7 +29,13 @@ void ksu_show_allow_list(void);
 bool __ksu_is_allow_uid(uid_t uid);
 #define ksu_is_allow_uid(uid) unlikely(__ksu_is_allow_uid(uid))
 
-// Check if the uid is in allow list, or current is ksu domain root
+// Check if the uid is in allow list, or current is ksu domain root.
+// Only reflects the grant state, use ksu_is_allow_uid_for_current() to
+// authorize current.
+bool ksu_is_uid_granted_root(uid_t uid);
+
+// ksu_is_uid_granted_root() plus extra restrictions on current, e.g. shell
+// may have to descend from adbd or a ksu domain process
 bool __ksu_is_allow_uid_for_current(uid_t uid);
 #define ksu_is_allow_uid_for_current(uid) unlikely(__ksu_is_allow_uid_for_current(uid))
 
@@ -53,7 +64,8 @@ static inline bool is_appuid(uid_t uid)
 static inline bool is_isolated_process(uid_t uid)
 {
     uid_t appid = uid % PER_USER_RANGE;
-    return appid >= FIRST_ISOLATED_UID && appid <= LAST_ISOLATED_UID;
+    return (appid >= FIRST_ISOLATED_UID && appid <= LAST_ISOLATED_UID) ||
+           (appid >= FIRST_APP_ZYGOTE_ISOLATED_UID && appid <= LAST_APP_ZYGOTE_ISOLATED_UID);
 }
 
 #endif

@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -46,10 +47,21 @@ import com.sukisu.ultra.getKernelVersion
 import com.sukisu.ultra.ui.component.dialog.rememberConfirmDialog
 import com.sukisu.ultra.ui.component.material.ExpressiveScaffold
 import com.sukisu.ultra.ui.component.material.SegmentedCheckboxItem
+import com.sukisu.ultra.ui.component.material.IconTile
 import com.sukisu.ultra.ui.component.material.SegmentedColumn
 import com.sukisu.ultra.ui.component.material.SegmentedDropdownItem
 import com.sukisu.ultra.ui.component.material.SegmentedListItem
-import com.sukisu.ultra.ui.component.material.SegmentedRadioItem
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import com.sukisu.ultra.ui.component.material.SegmentedTextField
 import com.sukisu.ultra.ui.component.material.SnackBarHost
 import com.sukisu.ultra.ui.component.material.TopBarBackButton
@@ -170,10 +182,7 @@ internal fun InstallScreenMaterial(
                     if (isGkiDevice && uiState.installMethod !is InstallMethod.HorizonKernel) add {
                         SegmentedListItem(
                             leadingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.DriveFileMove,
-                                    null
-                                )
+                                IconTile(Icons.AutoMirrored.Filled.DriveFileMove, null)
                             },
                             headlineContent = { Text(stringResource(R.string.install_upload_lkm_file)) },
                             supportingContent = {
@@ -240,6 +249,45 @@ internal fun InstallScreenMaterial(
                     )
                 }
                 item(visible = uiState.advancedOptionsShown) {
+                    SegmentedCheckboxItem(
+                        title = stringResource(id = R.string.install_block_modules),
+                        summary = stringResource(id = R.string.install_block_modules_warning),
+                        checked = uiState.blockModulesEnabled,
+                        onCheckedChange = actions.onSelectBlockModules,
+                    )
+                }
+                item(visible = uiState.advancedOptionsShown && uiState.blockModulesEnabled) {
+                    OutlinedTextField(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        value = uiState.blockModules,
+                        onValueChange = actions.onBlockModulesChange,
+                        label = { Text(stringResource(id = R.string.install_block_modules_list)) },
+                        supportingText = {
+                            Text(
+                                stringResource(
+                                    if (uiState.blockModulesValid) {
+                                        R.string.install_block_modules_summary
+                                    } else {
+                                        R.string.install_block_modules_invalid
+                                    }
+                                )
+                            )
+                        },
+                        isError = !uiState.blockModulesValid,
+                        singleLine = true,
+                    )
+                }
+                item(visible = uiState.advancedOptionsShown) {
+                    SegmentedCheckboxItem(
+                        title = stringResource(id = R.string.kernel_spoof),
+                        summary = stringResource(id = R.string.kernel_spoof_summary),
+                        checked = uiState.spoofEnabled,
+                        onCheckedChange = actions.onSpoofEnabledChange,
+                    )
+                }
+                item(visible = uiState.advancedOptionsShown && uiState.spoofEnabled) {
                     SegmentedTextField(
                         value = uiState.spoofRelease,
                         onValueChange = actions.onSpoofReleaseChange,
@@ -247,7 +295,7 @@ internal fun InstallScreenMaterial(
                         singleLine = true
                     )
                 }
-                item(visible = uiState.advancedOptionsShown) {
+                item(visible = uiState.advancedOptionsShown && uiState.spoofEnabled) {
                     SegmentedTextField(
                         value = uiState.spoofVersion,
                         onValueChange = actions.onSpoofVersionChange,
@@ -266,11 +314,7 @@ internal fun InstallScreenMaterial(
                             SegmentedListItem(
                                 onClick = { actions.onReopenSlotDialog(method) },
                                 leadingContent = {
-                                    Icon(
-                                        Icons.Filled.SdStorage,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        contentDescription = null
-                                    )
+                                    IconTile(Icons.Filled.SdStorage, null)
                                 },
                                 headlineContent = {
                                     Text(
@@ -321,7 +365,7 @@ internal fun InstallScreenMaterial(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                enabled = uiState.installMethod != null,
+                enabled = uiState.installMethod != null && uiState.blockModulesValid,
                 onClick = actions.onNext
             ) { Text(stringResource(R.string.install_next)) }
         }
@@ -354,20 +398,69 @@ private fun SelectInstallMethod(
         }
     }
 
+    val haptic = LocalHapticFeedback.current
     key(state.installMethodOptions.size) {
-        SegmentedColumn(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            content = state.installMethodOptions.map { option ->
-                {
-                    SegmentedRadioItem(
-                        title = stringResource(option.label),
-                        summary = option.summary,
-                        selected = state.installMethod?.let { option::class == it::class } ?: false,
-                        onClick = { onClick(option) }
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .selectableGroup(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            state.installMethodOptions.forEach { option ->
+                InstallMethodCard(
+                    title = stringResource(option.label),
+                    summary = option.summary,
+                    selected = state.installMethod?.let { option::class == it::class } ?: false,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                        onClick(option)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InstallMethodCard(
+    title: String,
+    summary: String?,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val borderColor by animateColorAsState(
+        if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+        label = "install_method_border"
+    )
+    Surface(
+        selected = selected,
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceBright,
+        border = BorderStroke(2.dp, borderColor),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = selected, onClick = null)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                if (!summary.isNullOrBlank()) {
+                    Text(
+                        text = summary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-        )
+        }
     }
 }
 

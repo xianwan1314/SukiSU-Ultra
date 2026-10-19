@@ -24,7 +24,8 @@ interface SettingsRepository {
     var enableWebDebugging: Boolean
     var moduleSortEnabledFirst: Boolean
     var moduleSortActionFirst: Boolean
-    var moduleRepoSortOrder: Int
+    /** Name of the [com.sukisu.ultra.ui.screen.modulerepo.RepoSort] entry. */
+    var moduleRepoSortOrder: String
     var superuserShowSystemApps: Boolean
     var superuserShowOnlyPrimaryUserApps: Boolean
     var superuserSortOption: Int
@@ -49,13 +50,23 @@ interface SettingsRepository {
     fun isSelinuxHideEnabled(): Boolean
     fun setSelinuxHideEnabled(enabled: Boolean): Int
 
+    suspend fun getMountHideStatus(): String
+    fun isMountHideEnabled(): Boolean
+    fun setMountHideEnabled(enabled: Boolean): Int
+
     suspend fun getSulogStatus(): String
     suspend fun getSulogPersistValue(): Long?
+    suspend fun getSulogValue(): Long?
     fun setSulogEnabled(enabled: Boolean): Boolean
 
     suspend fun getAdbRootStatus(): String
     suspend fun getAdbRootPersistValue(): Long?
+    suspend fun getAdbRootValue(): Long?
     fun setAdbRootEnabled(enabled: Boolean): Boolean
+    suspend fun getShellSuAdbOnlyStatus(): String
+    suspend fun getShellSuAdbOnlyValue(): Long?
+    suspend fun getShellSuAdbOnlyPersistValue(): Long?
+    fun setShellSuAdbOnlyEnabled(enabled: Boolean): Boolean
 
     fun isDefaultUmountModules(): Boolean
     fun setDefaultUmountModules(enabled: Boolean): Boolean

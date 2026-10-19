@@ -103,11 +103,18 @@ pub fn init() -> Result<()> {
     // This relies on the fact that we have /proc mounted
     unlimit_kmsg();
 
+    let params = std::fs::read("/ksu_config").unwrap_or_default();
+
+    // Before first stage init reads modules.blocklist, see blocklist.rs
+    ksuinit::blocklist::apply(&ksuinit::blocklist::block_modules_from_params(
+        &String::from_utf8_lossy(&params),
+    ));
+
     if ksuinit::has_kernelsu() {
         log::info!("KernelSU may be already loaded in kernel, skip!");
     } else {
         log::info!("Loading primary boot module /kernelsu.ko");
-        if let Err(e) = load_module_from_path("/kernelsu.ko", Some("/kernelsu_vivo.ko")) {
+        if let Err(e) = load_module_from_path("/kernelsu.ko", Some("/kernelsu_vivo.ko"), params) {
             log::error!("Cannot load kernelsu.ko: {:?}", e);
         }
     }
@@ -126,7 +133,7 @@ pub fn init() -> Result<()> {
     Ok(())
 }
 
-fn load_module_from_path(path: &str, fallback_path: Option<&str>) -> Result<()> {
+fn load_module_from_path(path: &str, fallback_path: Option<&str>, params: Vec<u8>) -> Result<()> {
     anyhow::ensure!(rustix::process::getpid().is_init(), "Invalid process");
     let buffer = std::fs::read(path).with_context(|| format!("Cannot read file {}", path))?;
     let fallback = fallback_path.and_then(|fallback_path| match std::fs::read(fallback_path) {
@@ -139,7 +146,6 @@ fn load_module_from_path(path: &str, fallback_path: Option<&str>) -> Result<()> 
             None
         }
     });
-    let params = std::fs::read("/ksu_config").unwrap_or_default();
     let params = unsafe { CString::from_vec_unchecked(params) };
     log::info!("load kernelsu with params {params:?}");
     ksuinit::load_module_with_named_vermagic_fallback(

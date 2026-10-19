@@ -1,17 +1,28 @@
 package com.sukisu.ultra.ui
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.View
+import android.view.animation.PathInterpolator
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.core.animation.doOnEnd
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -46,6 +57,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -54,6 +66,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -66,7 +79,6 @@ import com.sukisu.ultra.ui.component.bottombar.SideRail
 import com.sukisu.ultra.ui.component.bottombar.rememberMainPagerState
 import com.sukisu.ultra.ui.component.bottombar.useNavigationRail
 import com.sukisu.ultra.ui.kernelFlash.KernelFlashScreen
-import com.sukisu.ultra.ui.navigation3.HandleZipFileIntent
 import com.sukisu.ultra.ui.navigation3.IntentDispatcher
 import com.sukisu.ultra.ui.navigation3.LocalNavigator
 import com.sukisu.ultra.ui.navigation3.Navigator
@@ -75,6 +87,8 @@ import com.sukisu.ultra.ui.navigation3.rememberNavigator
 import com.sukisu.ultra.ui.screen.about.AboutScreen
 import com.sukisu.ultra.ui.screen.appprofile.AppProfileScreen
 import com.sukisu.ultra.ui.screen.colorpalette.ColorPaletteScreen
+import com.sukisu.ultra.ui.screen.dynamicmanagers.DynamicManagersScreen
+import com.sukisu.ultra.ui.screen.extensions.ExtensionsScreen
 import com.sukisu.ultra.ui.screen.executemoduleaction.ExecuteModuleActionScreen
 import com.sukisu.ultra.ui.screen.flash.FlashScreen
 import com.sukisu.ultra.ui.screen.home.HomePager
@@ -83,6 +97,7 @@ import com.sukisu.ultra.ui.screen.kpm.KpmScreen
 import com.sukisu.ultra.ui.screen.module.ModulePager
 import com.sukisu.ultra.ui.screen.modulerepo.ModuleRepoDetailScreen
 import com.sukisu.ultra.ui.screen.modulerepo.ModuleRepoScreen
+import com.sukisu.ultra.ui.screen.scriptrun.ScriptRunScreen
 import com.sukisu.ultra.ui.screen.settings.SettingPager
 import com.sukisu.ultra.ui.screen.settings.tools.ToolsScreen
 import com.sukisu.ultra.ui.screen.sulog.SulogScreen
@@ -123,14 +138,14 @@ class MainActivity : ComponentActivity() {
     private val intentChannel = Channel<Intent>(capacity = Channel.BUFFERED)
     private var contentReady = false
     private var splashStartedAt = 0L
-    private val splashAnimationDurationMs = 500L
+    private val splashAnimationDurationMs = 600L
+    private var isSplashExiting by mutableStateOf(false)
 
 
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(com.sukisu.ultra.ui.util.LocaleHelper.wrap(newBase))
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -138,6 +153,51 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         splashScreen.setKeepOnScreenCondition {
             !contentReady || SystemClock.uptimeMillis() - splashStartedAt < splashAnimationDurationMs
+        }
+        splashScreen.setOnExitAnimationListener { provider ->
+            // iconView is missing when the system splash has no icon (some OEMs, non-launcher starts)
+            val iconView = runCatching { provider.iconView }.getOrNull()
+            val splashView = provider.view
+
+            // 1. Icon 先微縮蓄力 (Scale 1.0 -> 0.86, 140ms)
+            val anticipate = AnimatorSet().apply {
+                interpolator = PathInterpolator(0.3f, 0f, 0.2f, 1f)
+                duration = 140L
+                if (iconView != null) {
+                    playTogether(
+                        ObjectAnimator.ofFloat(iconView, View.SCALE_X, 1f, 0.86f),
+                        ObjectAnimator.ofFloat(iconView, View.SCALE_Y, 1f, 0.86f),
+                    )
+                }
+                doOnEnd { isSplashExiting = true }
+            }
+
+            // 2. Icon 向前衝出並消散 (Scale 0.86 -> 2.6, Alpha 1.0 -> 0.0, 320ms)
+            // 3. 背景隨之淡出，露出正在展開的內容 (延遲 40ms, 280ms)
+            val launch = AnimatorSet().apply {
+                interpolator = PathInterpolator(0.4f, 0f, 0.6f, 1f)
+                duration = 320L
+                val bgAlpha = ObjectAnimator.ofFloat(splashView, View.ALPHA, 1f, 0f).apply {
+                    startDelay = 40L
+                    duration = 280L
+                }
+                if (iconView != null) {
+                    playTogether(
+                        ObjectAnimator.ofFloat(iconView, View.SCALE_X, 0.86f, 2.6f),
+                        ObjectAnimator.ofFloat(iconView, View.SCALE_Y, 0.86f, 2.6f),
+                        ObjectAnimator.ofFloat(iconView, View.ALPHA, 1f, 0f),
+                        bgAlpha,
+                    )
+                } else {
+                    play(bgAlpha)
+                }
+            }
+
+            AnimatorSet().apply {
+                playSequentially(anticipate, launch)
+                doOnEnd { provider.remove() }
+                start()
+            }
         }
 
         val isManager = Natives.isManager
@@ -164,7 +224,15 @@ class MainActivity : ComponentActivity() {
                         android.graphics.Color.TRANSPARENT
                     ) { darkMode },
                 )
-                window.isNavigationBarContrastEnforced = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    window.isNavigationBarContrastEnforced = false
+                }
+                // Match the splash background so the shrunken content never shows a mismatched edge
+                window.setBackgroundDrawable(
+                    ColorDrawable(
+                        getColor(if (darkMode) android.R.color.background_dark else android.R.color.background_light)
+                    )
+                )
                 onDispose { }
             }
 
@@ -185,80 +253,132 @@ class MainActivity : ComponentActivity() {
                 LocalModuleDescriptionMaxLines provides uiState.moduleDescriptionMaxLines,
                 LocalUiMode provides uiMode,
             ) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    KernelSUTheme(appSettings = appSettings, uiMode = uiMode) {
-                        IntentDispatcher(intentChannel = intentChannel)
-                        HandleZipFileIntent()
-                        val swipeDismiss = if (uiState.enableSwipeDismiss) {
-                            if (LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl) {
-                                NavSwipeDirection.RightToLeft
-                            } else {
-                                NavSwipeDirection.LeftToRight
-                            }
+                KernelSUTheme(appSettings = appSettings, uiMode = uiMode) {
+                    IntentDispatcher(intentChannel = intentChannel)
+                    val swipeDismiss = if (uiState.enableSwipeDismiss) {
+                        if (LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl) {
+                            NavSwipeDirection.RightToLeft
                         } else {
-                            NavSwipeDirection.None
+                            NavSwipeDirection.LeftToRight
                         }
-                        val mainScreenEntry = @Composable {
-                            MainScreen(
-                                initialPage = selectedMainPage,
-                                pagerInterceptionMode = uiState.pagerInterceptionMode,
-                                onPageChanged = viewModel::setSelectedMainPage,
-                            )
-                        }
+                    } else {
+                        NavSwipeDirection.None
+                    }
+                    val flashRoute = navigator.current() as? Route.Flash
+                    var flashBackEnabled by remember(flashRoute) { mutableStateOf(false) }
+                    val scriptRunRoute = navigator.current() as? Route.ScriptRun
+                    var scriptRunBackEnabled by remember(scriptRunRoute) { mutableStateOf(true) }
+                    // Read here, not inside the NavDisplay builder: NavDisplay only rebuilds its entries
+                    // (and their swipeDismiss) when the builder lambda changes, so it must capture the value.
+                    val scriptRunSwipeDismiss = if (scriptRunBackEnabled) swipeDismiss else NavSwipeDirection.None
+                    val mainScreenEntry = @Composable {
+                        MainScreen(
+                            initialPage = selectedMainPage,
+                            pagerInterceptionMode = uiState.pagerInterceptionMode,
+                            onPageChanged = viewModel::setSelectedMainPage,
+                        )
+                    }
 
-                        val navDisplay = @Composable {
-                            NavDisplay(
-                                backStack = navigator.backStack,
-                                effects = NavDisplayEffects(cornerClipRadius = rememberNavSystemCornerRadius()),
-                                onBack = {
-                                    when (val top = navigator.current()) {
-                                        is Route.TemplateEditor -> {
-                                            if (!top.readOnly) {
-                                                navigator.setResult("template_edit", true)
-                                            } else {
-                                                navigator.pop()
-                                            }
+                    val navDisplay = @Composable {
+                        NavDisplay(
+                            backStack = navigator.backStack,
+                            effects = NavDisplayEffects(cornerClipRadius = rememberNavSystemCornerRadius()),
+                            onBack = {
+                                when (val top = navigator.current()) {
+                                    is Route.TemplateEditor -> {
+                                        if (!top.readOnly) {
+                                            navigator.setResult("template_edit", true)
+                                        } else {
+                                            navigator.pop()
                                         }
-
-                                        else -> navigator.pop()
                                     }
-                                }) {
-                                entry<Route.Main>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                                entry<Route.About>(swipeDismiss = swipeDismiss) { AboutScreen() }
-                                entry<Route.Sulog>(swipeDismiss = swipeDismiss) { SulogScreen() }
-                                entry<Route.ColorPalette>(swipeDismiss = swipeDismiss) { ColorPaletteScreen() }
-                                entry<Route.AppProfileTemplate>(swipeDismiss = swipeDismiss) { AppProfileTemplateScreen() }
-                                entry<Route.TemplateEditor>(swipeDismiss = swipeDismiss) { key -> TemplateEditorScreen(key.template, key.readOnly) }
-                                entry<Route.AppProfile>(swipeDismiss = swipeDismiss) { key -> AppProfileScreen(key.uid) }
-                                entry<Route.ModuleRepo>(swipeDismiss = swipeDismiss) { ModuleRepoScreen() }
-                                entry<Route.ModuleRepoDetail>(swipeDismiss = swipeDismiss) { key -> ModuleRepoDetailScreen(key.module) }
-                                entry<Route.Install>(swipeDismiss = swipeDismiss) { key -> InstallScreen(preselectedKernelUri = key.preselectedKernelUri) }
-                                entry<Route.Flash>(swipeDismiss = swipeDismiss) { key -> FlashScreen(key.flashIt) }
-                                entry<Route.ExecuteModuleAction>(swipeDismiss = swipeDismiss) { key ->
-                                    ExecuteModuleActionScreen(
-                                        key.moduleId,
-                                        key.fromShortcut
+
+                                    else -> navigator.pop()
+                                }
+                            }) {
+                            entry<Route.Main>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
+                            entry<Route.About>(swipeDismiss = swipeDismiss) { AboutScreen() }
+                            entry<Route.Sulog>(swipeDismiss = swipeDismiss) { SulogScreen() }
+                            entry<Route.ColorPalette>(swipeDismiss = swipeDismiss) { ColorPaletteScreen() }
+                            entry<Route.AppProfileTemplate>(swipeDismiss = swipeDismiss) { AppProfileTemplateScreen() }
+                            entry<Route.TemplateEditor>(swipeDismiss = swipeDismiss) { key -> TemplateEditorScreen(key.template, key.readOnly) }
+                            entry<Route.AppProfile>(swipeDismiss = swipeDismiss) { key -> AppProfileScreen(key.uid) }
+                            entry<Route.ModuleRepo>(swipeDismiss = swipeDismiss) { ModuleRepoScreen() }
+                            entry<Route.ModuleRepoDetail>(swipeDismiss = swipeDismiss) { key -> ModuleRepoDetailScreen(key.module) }
+                            entry<Route.Install>(swipeDismiss = swipeDismiss) { key -> InstallScreen(preselectedKernelUri = key.preselectedKernelUri) }
+                            entry<Route.Flash>(swipeDismiss = if (flashBackEnabled) swipeDismiss else NavSwipeDirection.None) { key ->
+                                FlashScreen(
+                                    key.flashIt,
+                                    onBackEnabledChange = { enabled ->
+                                        if (navigator.current() == key) flashBackEnabled = enabled
+                                    },
+                                )
+                            }
+                            entry<Route.ExecuteModuleAction>(swipeDismiss = swipeDismiss) { key ->
+                                ExecuteModuleActionScreen(
+                                    key.moduleId,
+                                    key.fromShortcut
+                                )
+                            }
+                            entry<Route.ScriptRun>(swipeDismiss = scriptRunSwipeDismiss) { key ->
+                                ScriptRunScreen(
+                                    key.arg,
+                                    onBackEnabledChange = { enabled ->
+                                        if (navigator.current() == key) scriptRunBackEnabled = enabled
+                                    },
+                                )
+                            }
+                            entry<Route.Home>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
+                            entry<Route.SuperUser>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
+                            entry<Route.Module>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
+                            entry<Route.Settings>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
+                            entry<Route.KernelFlash>(swipeDismiss = swipeDismiss)  { key ->
+                                    KernelFlashScreen(
+                                        key.kernelUri,
+                                        key.selectedSlot,
+                                        key.kpmPatchEnabled,
+                                        key.kpmUndoPatch
                                     )
                                 }
-                                entry<Route.Home>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                                entry<Route.SuperUser>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                                entry<Route.Module>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                                entry<Route.Settings>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                                entry<Route.KernelFlash>(swipeDismiss = swipeDismiss)  { key ->
-                                        KernelFlashScreen(
-                                            key.kernelUri,
-                                            key.selectedSlot,
-                                            key.kpmPatchEnabled,
-                                            key.kpmUndoPatch
-                                        )
-                                    }
-                                    entry<Route.Kpm>(swipeDismiss = swipeDismiss)  { KpmScreen() }
-                                    entry<Route.SuSFS>(swipeDismiss = swipeDismiss)  { SuSFSScreen() }
-                                    entry<Route.Tool>(swipeDismiss = swipeDismiss)  { ToolsScreen() }
-                                    entry<Route.UmountManager>(swipeDismiss = swipeDismiss)  { UmountManagerScreen() }
-                            }
+                                entry<Route.Kpm>(swipeDismiss = swipeDismiss)  { KpmScreen() }
+                                entry<Route.SuSFS>(swipeDismiss = swipeDismiss)  { SuSFSScreen() }
+                                entry<Route.Tool>(swipeDismiss = swipeDismiss)  { ToolsScreen() }
+                                entry<Route.UmountManager>(swipeDismiss = swipeDismiss)  { UmountManagerScreen() }
+                                entry<Route.DynamicManagers>(swipeDismiss = swipeDismiss) { DynamicManagersScreen() }
+                                entry<Route.Extensions>(swipeDismiss = swipeDismiss) { ExtensionsScreen() }
                         }
+                    }
 
+                    LaunchedEffect(Unit) {
+                        delay(splashAnimationDurationMs + 300L)
+                        isSplashExiting = true
+                    }
+
+                    val enterProgress by animateFloatAsState(
+                        targetValue = if (isSplashExiting) 1f else 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = "splashExitContentProgress"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                // 內容從圓角小卡片展開成全螢幕 (Scale 0.86 -> 1.0, 圓角 36dp -> 0)
+                                val scale = 0.86f + 0.14f * enterProgress
+                                scaleX = scale
+                                scaleY = scale
+                                if (enterProgress < 1f) {
+                                    shape = RoundedCornerShape(36.dp * (1f - enterProgress))
+                                    clip = true
+                                } else {
+                                    clip = false
+                                }
+                            }
+                    ) {
                         when (uiMode) {
                             UiMode.Material -> androidx.compose.material3.Scaffold(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -266,10 +386,9 @@ class MainActivity : ComponentActivity() {
 
                             UiMode.Miuix -> Scaffold { navDisplay() }
                         }
-                        SideEffect { contentReady = true }
                     }
-                    SideEffect { contentReady = true }
                 }
+                SideEffect { contentReady = true }
             }
         }
     }
@@ -363,7 +482,7 @@ fun MainScreen(
     }
     val uiMode = LocalUiMode.current
     val surfaceColor = when (uiMode) {
-        UiMode.Material -> MaterialTheme.colorScheme.surface // Blur is not used in Material, this is just a placeholder
+        UiMode.Material -> MaterialTheme.colorScheme.surfaceContainer // Matches the Material page background behind the glass bar
         UiMode.Miuix -> MiuixTheme.colorScheme.surface
     }
     val blurBackdrop = rememberBlurBackdrop(enableBlur)
@@ -398,7 +517,8 @@ fun MainScreen(
                             mode = pagerMode,
                             enabled = userScrollEnabled,
                         )
-                        .then(if (enableFloatingBottomBar && enableFloatingBottomBarBlur) Modifier.layerBackdrop(backdrop) else Modifier),
+                        // Material always floats its bar, so only the glass toggle matters there.
+                        .then(if ((uiMode == UiMode.Material || enableFloatingBottomBar) && enableFloatingBottomBarBlur) Modifier.layerBackdrop(backdrop) else Modifier),
                     state = mainPagerState.pagerState,
                     beyondViewportPageCount = if (contentReady) 3 else 0,
                     overscrollEffect = null,

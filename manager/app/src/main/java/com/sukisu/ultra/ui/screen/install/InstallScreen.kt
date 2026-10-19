@@ -37,6 +37,8 @@ import com.sukisu.ultra.ui.util.LkmSelection
 import com.sukisu.ultra.ui.util.getAvailablePartitions
 import com.sukisu.ultra.ui.util.getCurrentKmi
 import com.sukisu.ultra.ui.util.getDefaultPartition
+import com.sukisu.ultra.ui.util.getLoadedBlockableModules
+import com.sukisu.ultra.ui.util.isBlockModulesValid
 import com.sukisu.ultra.ui.util.getSlotSuffix
 import com.sukisu.ultra.ui.util.isAbDevice
 import android.net.Uri
@@ -74,13 +76,39 @@ fun InstallScreen(
     var enableAdb by rememberSaveable { mutableStateOf(false) }
     var forceBackup by rememberSaveable { mutableStateOf(false) }
     var selectedBootImageKind by rememberSaveable { mutableStateOf<String?>(null) }
+    var blockModulesEnabled by rememberSaveable { mutableStateOf(false) }
+    var blockModules by rememberSaveable { mutableStateOf("") }
+    var blockModulesPrefilled by rememberSaveable { mutableStateOf(false) }
+    // Blocking a module the device needs can bootloop it, so nothing is
+    // blocked unless the user explicitly opts in.
+    val effectiveBlockModules = if (blockModulesEnabled) blockModules else ""
+
+    // Pre-fill the block list with the known anti-root modules actually loaded
+    // on this device, once. It only takes effect once the user opts in.
+    LaunchedEffect(Unit) {
+        if (!blockModulesPrefilled) {
+            blockModulesPrefilled = true
+            val detected = getLoadedBlockableModules()
+            if (detected.isNotEmpty() && blockModules.isBlank()) {
+                blockModules = detected.joinToString(",")
+            }
+        }
+    }
 
     // Read the configuration from the boot image ksu_config
     val bootConfig by produceState(initialValue = BootConfig()) { value = getBootConfig() }
+    var spoofEnabled by rememberSaveable { mutableStateOf(false) }
     var spoofRelease by rememberSaveable { mutableStateOf(SuSFSManager.getKernelSpoofRelease()) }
     var spoofVersion by rememberSaveable { mutableStateOf(SuSFSManager.getKernelSpoofVersion()) }
 
+    val effectiveSpoofRelease = if (spoofEnabled) spoofRelease else ""
+    val effectiveSpoofVersion = if (spoofEnabled) spoofVersion else ""
+
     LaunchedEffect(bootConfig) {
+        // boot 镜像里已有伪装配置时，默认打开开关，避免静默覆盖
+        if (bootConfig.spoofRelease.isNotEmpty() || bootConfig.spoofVersion.isNotEmpty()) {
+            spoofEnabled = true
+        }
         spoofRelease = bootConfig.spoofRelease.ifEmpty { spoofRelease }
         spoofVersion = bootConfig.spoofVersion.ifEmpty { spoofVersion }
     }
@@ -184,8 +212,11 @@ fun InstallScreen(
         }
     }
 
+    val blockModulesInvalidMessage = stringResource(R.string.install_block_modules_invalid)
     val onInstall = {
-        installMethod?.let { method ->
+        if (!isBlockModulesValid(effectiveBlockModules)) {
+            showMessage(blockModulesInvalidMessage)
+        } else installMethod?.let { method ->
             when (method) {
                 is InstallMethod.HorizonKernel -> {
                     method.uri?.let { uri ->
@@ -211,8 +242,9 @@ fun InstallScreen(
                                     allowShell = allowShell,
                                     enableAdb = enableAdb,
                                     backup = forceBackup,
-                                    spoofRelease = spoofRelease.trim(),
-                                    spoofVersion = spoofVersion.trim(),
+                                    blockModules = effectiveBlockModules,
+                                    spoofRelease = effectiveSpoofRelease.trim(),
+                                    spoofVersion = effectiveSpoofVersion.trim(),
                                 )
                                 else -> FlashIt.FlashBoot(
                                     boot = if (method is InstallMethod.SelectFile) method.uri else null,
@@ -223,8 +255,9 @@ fun InstallScreen(
                                     allowShell = allowShell,
                                     enableAdb = enableAdb,
                                     backup = method is InstallMethod.SelectFile && forceBackup,
-                                    spoofRelease = spoofRelease.trim(),
-                                    spoofVersion = spoofVersion.trim(),
+                                    blockModules = effectiveBlockModules,
+                                    spoofRelease = effectiveSpoofRelease.trim(),
+                                    spoofVersion = effectiveSpoofVersion.trim(),
                                 )
                             }
                         )
@@ -356,12 +389,16 @@ fun InstallScreen(
         enableAdb = enableAdb,
         forceBackup = forceBackup,
         canForceBackup = installMethod is InstallMethod.SelectFile,
-        spoofRelease = spoofRelease,
-        spoofVersion = spoofVersion,
         anyKernel3State = anyKernel3State,
         kpmPatchOption = kpmPatchOption,
         showSlotSelectionDialog = showSlotSelectionDialog,
         showKpmPatchDialog = showKpmPatchDialog,
+        blockModulesEnabled = blockModulesEnabled,
+        blockModules = blockModules,
+        blockModulesValid = isBlockModulesValid(effectiveBlockModules),
+        spoofEnabled = spoofEnabled,
+        spoofRelease = spoofRelease,
+        spoofVersion = spoofVersion,
     )
     val actions = InstallScreenActions(
         onBack = dropUnlessResumed { navigator.pop() },
@@ -443,6 +480,18 @@ fun InstallScreen(
         onSelectForceBackup = {
             forceBackup = it
         },
+        onSpoofEnabledChange = {
+            spoofEnabled = it
+            if (!it) {
+                // 关闭开关时清空已填写的值
+                spoofRelease = ""
+                spoofVersion = ""
+                scope.launch {
+                    SuSFSManager.saveUnameValue("default")
+                    SuSFSManager.saveBuildTimeValue("default")
+                }
+            }
+        },
         onSpoofReleaseChange = {
             spoofRelease = it
             scope.launch {
@@ -463,6 +512,12 @@ fun InstallScreen(
         },
         onReopenKpmDialog = { method ->
             anyKernel3State.onReopenKpmDialog(method)
+        },
+        onSelectBlockModules = {
+            blockModulesEnabled = it
+        },
+        onBlockModulesChange = {
+            blockModules = it
         }
     )
 

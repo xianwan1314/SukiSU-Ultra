@@ -42,6 +42,10 @@ data class SettingsUiState(
     val selinuxHideStatus: String = "",
     val isSelinuxHideEnabled: Boolean = false,
 
+    // Mount Hide
+    val mountHideStatus: String = "",
+    val isMountHideEnabled: Boolean = false,
+
     // SU Log
     val sulogStatus: String = "",
     val isSulogEnabled: Boolean = false,
@@ -52,6 +56,10 @@ data class SettingsUiState(
     // ADB Root
     val adbRootStatus: String = "",
     val isAdbRootEnabled: Boolean = false,
+
+    // Shell SU ADB Only
+    val shellSuAdbOnlyStatus: String = "",
+    val isShellSuAdbOnlyEnabled: Boolean = false,
 
     val isLkmMode: Boolean = false,
     val isLateLoadMode: Boolean = false,
@@ -74,8 +82,10 @@ data class SettingsScreenActions(
     val onSetSuCompatMode: (Int) -> Unit,
     val onSetKernelUmountEnabled: (Boolean) -> Unit,
     val onSetSelinuxHideEnabled: (Boolean) -> Unit,
+    val onSetMountHideEnabled: (Boolean) -> Unit,
     val onSetSulogEnabled: (Boolean) -> Unit,
     val onSetAdbRootEnabled: (Boolean) -> Unit,
+    val onSetShellSuAdbOnlyEnabled: (Boolean) -> Unit,
     val onSetDefaultUmountModules: (Boolean) -> Unit,
     val onSetEnableWebDebugging: (Boolean) -> Unit,
     val onSetAutoJailbreak: (Boolean) -> Unit,
@@ -83,6 +93,6 @@ data class SettingsScreenActions(
     val onOpenAbout: () -> Unit,
     val onSetAlternativeIcon: (Boolean) -> Unit,
     val onOpenTools: () -> Unit,
-    val onOpenKpm: () -> Unit,
     val onOpenSusfsConfig: () -> Unit,
+    val onOpenExtensions: () -> Unit,
 )
