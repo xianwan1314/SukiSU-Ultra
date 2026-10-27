@@ -3,11 +3,10 @@ package com.sukisu.ultra.ui.screen.susfs.util
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 object SuSFSManager {
-    fun getCurrentModuleConfig(): ModuleConfig = SuSFSRepository.getCurrentModuleConfig()
+    suspend fun getCurrentModuleConfig(): ModuleConfig = SuSFSRepository.getCurrentModuleConfig()
 
     fun getKernelSpoofRelease(): String = SuSFSRepository.getKernelSpoofRelease()
     fun getKernelSpoofVersion(): String = SuSFSRepository.getKernelSpoofVersion()
@@ -75,20 +74,19 @@ object SuSFSManager {
     suspend fun updateKstat(context: Context, path: String): Boolean = SuSFSPathManager.updateKstat(context, path)
     suspend fun updateKstatFullClone(context: Context, path: String): Boolean = SuSFSPathManager.updateKstatFullClone(context, path)
 
-    fun createBackup(context: Context, backupFilePath: String): Boolean = runBlocking { SuSFSBackupManager.createBackup(context, backupFilePath) }
+    suspend fun createBackup(context: Context, backupFilePath: String): Boolean = SuSFSBackupManager.createBackup(context, backupFilePath)
     suspend fun restoreFromBackup(context: Context, backupFilePath: String): Boolean = SuSFSBackupManager.restoreFromBackup(context, backupFilePath)
     suspend fun validateBackupFile(backupFilePath: String): BackupData? = SuSFSBackupManager.validateBackupFile(backupFilePath)
     fun getDefaultBackupFileName(): String = SuSFSBackupManager.getDefaultBackupFileName()
 
-    suspend fun hasConfigurationForAutoStart(context: Context): Boolean {
-        val config = getCurrentModuleConfig()
+    suspend fun hasConfigurationForAutoStart(context: Context, config: ModuleConfig): Boolean {
         return config.hasAutoStartConfig() || SuSFSCommands.getEnabledFeatures(context).any { it.isEnabled }
     }
 
     suspend fun configureAutoStart(context: Context, enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
         try {
             if (enabled) {
-                if (!hasConfigurationForAutoStart(context)) {
+                if (!hasConfigurationForAutoStart(context, getCurrentModuleConfig())) {
                     Log.e("SuSFSManager", "No configuration available for auto start")
                     return@withContext false
                 }

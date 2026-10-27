@@ -23,8 +23,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +61,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,6 +79,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.FixedScale
@@ -84,6 +88,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
@@ -120,6 +125,8 @@ import com.sukisu.ultra.ui.util.BlurredBar
 import com.sukisu.ultra.ui.util.getFileName
 import com.sukisu.ultra.ui.util.reboot
 import com.sukisu.ultra.ui.util.rememberBlurBackdrop
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownImpl
@@ -290,24 +297,84 @@ fun ModulePagerMiuix(
                                     content = {
                                         ListPopupColumn {
                                             DropdownImpl(
-                                                text = stringResource(R.string.module_sort_action_first),
-                                                optionSize = 2,
-                                                isSelected = uiState.sortActionFirst,
-                                                onSelectedIndexChange = {
-                                                    actions.onToggleSortActionFirst()
-                                                    showTopPopup.value = false
-                                                },
-                                                index = 0
-                                            )
-                                            DropdownImpl(
                                                 text = stringResource(R.string.module_sort_enabled_first),
-                                                optionSize = 2,
+                                                optionSize = 8,
                                                 isSelected = uiState.sortEnabledFirst,
                                                 onSelectedIndexChange = {
                                                     actions.onToggleSortEnabledFirst()
                                                     showTopPopup.value = false
                                                 },
+                                                index = 0
+                                            )
+                                            DropdownImpl(
+                                                text = stringResource(R.string.module_sort_metamodule_first),
+                                                optionSize = 8,
+                                                isSelected = uiState.sortMetamoduleFirst,
+                                                onSelectedIndexChange = {
+                                                    actions.onToggleSortMetamoduleFirst()
+                                                    showTopPopup.value = false
+                                                },
                                                 index = 1
+                                            )
+                                            DropdownImpl(
+                                                text = stringResource(R.string.module_sort_zygisk_first),
+                                                optionSize = 8,
+                                                isSelected = uiState.sortZygiskFirst,
+                                                onSelectedIndexChange = {
+                                                    actions.onToggleSortZygiskFirst()
+                                                    showTopPopup.value = false
+                                                },
+                                                index = 2
+                                            )
+                                            DropdownImpl(
+                                                text = stringResource(R.string.module_sort_webui_first),
+                                                optionSize = 8,
+                                                isSelected = uiState.sortWebUiFirst,
+                                                onSelectedIndexChange = {
+                                                    actions.onToggleSortWebUiFirst()
+                                                    showTopPopup.value = false
+                                                },
+                                                index = 3
+                                            )
+                                            DropdownImpl(
+                                                text = stringResource(R.string.module_sort_action_first),
+                                                optionSize = 8,
+                                                isSelected = uiState.sortActionFirst,
+                                                onSelectedIndexChange = {
+                                                    actions.onToggleSortActionFirst()
+                                                    showTopPopup.value = false
+                                                },
+                                                index = 4
+                                            )
+                                            DropdownImpl(
+                                                text = stringResource(R.string.module_sort_name_asc),
+                                                optionSize = 8,
+                                                isSelected = uiState.sortNameOrder == ModuleNameSort.ASCENDING,
+                                                onSelectedIndexChange = {
+                                                    actions.onSetSortNameOrder(ModuleNameSort.ASCENDING)
+                                                    showTopPopup.value = false
+                                                },
+                                                index = 5
+                                            )
+                                            DropdownImpl(
+                                                text = stringResource(R.string.module_sort_name_desc),
+                                                optionSize = 8,
+                                                isSelected = uiState.sortNameOrder == ModuleNameSort.DESCENDING,
+                                                onSelectedIndexChange = {
+                                                    actions.onSetSortNameOrder(ModuleNameSort.DESCENDING)
+                                                    showTopPopup.value = false
+                                                },
+                                                index = 6
+                                            )
+                                            DropdownImpl(
+                                                text = stringResource(R.string.module_sort_manual),
+                                                optionSize = 8,
+                                                isSelected = uiState.sortManual,
+                                                onSelectedIndexChange = {
+                                                    actions.onToggleSortManual()
+                                                    showTopPopup.value = false
+                                                },
+                                                index = 7
                                             )
                                         }
                                     }
@@ -402,10 +469,12 @@ fun ModulePagerMiuix(
                         .border(0.05.dp, colorScheme.outline.copy(alpha = 0.5f), CircleShape),
                     shadowElevation = 0.dp,
                     onClick = {
-                        // Select the zip files to install
-                        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                        // Write access lets the manager delete the picked ZIP after a successful install
+                        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
                             type = "application/zip"
                             putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                         }
                         selectZipLauncher.launch(intent)
                     },
@@ -525,6 +594,11 @@ fun ModulePagerMiuix(
                         listState,
                         uiState.sortEnabledFirst,
                         uiState.sortActionFirst,
+                        uiState.sortWebUiFirst,
+                        uiState.sortZygiskFirst,
+                        uiState.sortMetamoduleFirst,
+                        uiState.sortNameOrder,
+                        uiState.sortManual,
                         refreshTick.intValue,
                         isBusy = { latestRefreshing.value },
                     ) { latestModules.value }
@@ -543,6 +617,7 @@ fun ModulePagerMiuix(
                             },
                             contentPadding = contentPadding,
                             listState = listState,
+                            reorderEnabled = uiState.sortManual,
                             summary = if (uiState.moduleList.isEmpty()) null else stringResource(
                                 R.string.module_summary,
                                 uiState.moduleList.count { it.enabled },
@@ -701,10 +776,19 @@ private fun ModuleList(
     onModuleAddShortcut: (Module, ShortcutType) -> Unit,
     contentPadding: PaddingValues,
     listState: LazyListState = rememberLazyListState(),
+    reorderEnabled: Boolean = false,
     summary: String? = null,
 ) {
     val loadingDialog = rememberLoadingDialog()
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+        val fromModule = modules.firstOrNull { it.id == from.key }
+        val toModule = modules.firstOrNull { it.id == to.key }
+        if (fromModule != null && toModule != null) {
+            actions.onMoveModule(fromModule, toModule)
+        }
+    }
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxHeight(),
@@ -728,7 +812,12 @@ private fun ModuleList(
         ) { module ->
             val currentModuleState = rememberUpdatedState(module)
             val moduleUpdateInfo = updateInfoMap[module.id] ?: ModuleUpdateInfo.Empty
-            val content: @Composable () -> Unit = {
+
+            ReorderableItem(
+                state = reorderableState,
+                key = module.id,
+                enabled = reorderEnabled,
+            ) { _ ->
                 ModuleItem(
                     module = module,
                     updateUrl = moduleUpdateInfo.downloadUrl,
@@ -764,11 +853,21 @@ private fun ModuleList(
                         if (module.hasWebUi) {
                             actions.onOpenWebUi(module)
                         }
-                    }
+                    },
+                    dragHandleModifier = if (reorderEnabled) {
+                        Modifier.draggableHandle(
+                            onDragStarted = {
+                                haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                            },
+                            onDragStopped = {
+                                actions.onCommitManualOrder()
+                            },
+                        )
+                    } else {
+                        null
+                    },
                 )
             }
-
-            content()
         }
     }
 }
@@ -784,7 +883,8 @@ fun ModuleItem(
     onUpdate: () -> Unit,
     onExecuteAction: () -> Unit,
     onAddActionShortcut: (ShortcutType) -> Unit,
-    onOpenWebUi: () -> Unit
+    onOpenWebUi: () -> Unit,
+    dragHandleModifier: Modifier? = null,
 ) {
     val secondaryContainer = colorScheme.secondaryContainer.copy(alpha = 0.8f)
     val actionIconTint = colorScheme.onSurface.copy(alpha = if (isInDarkTheme()) 0.7f else 0.9f)
@@ -795,6 +895,7 @@ fun ModuleItem(
     val hasDescription = module.description.isNotBlank()
     val maxLinesLimit = LocalModuleDescriptionMaxLines.current
     var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
+    val dragHandleInteractionSource = remember { MutableInteractionSource() }
     val banner = rememberModuleBanner(module.id, module.bannerPath)
 
     Card(
@@ -913,6 +1014,28 @@ fun ModuleItem(
                         if (it != module.enabled) onCheckChanged(it)
                     }
                 )
+
+                if (dragHandleModifier != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .then(dragHandleModifier)
+                            .clickable(
+                                interactionSource = dragHandleInteractionSource,
+                                indication = null,
+                                onClick = {},
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.DragHandle,
+                            tint = colorScheme.onSurfaceVariantSummary,
+                            contentDescription = stringResource(R.string.module_sort_manual_drag),
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
             }
 
             if (hasDescription) {

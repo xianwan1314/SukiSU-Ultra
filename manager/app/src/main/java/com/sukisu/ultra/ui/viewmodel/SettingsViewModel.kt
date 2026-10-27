@@ -25,7 +25,11 @@ class SettingsViewModel(
     private val repo: SettingsRepository = SettingsRepositoryImpl()
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(SettingsUiState(
+        checkUpdate = repo.checkUpdate,
+        checkCiUpdate = repo.checkCiUpdate,
+        checkModuleUpdate = repo.checkModuleUpdate,
+    ))
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
@@ -34,8 +38,6 @@ class SettingsViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            val checkUpdate = repo.checkUpdate
-            val checkModuleUpdate = repo.checkModuleUpdate
             val alternativeIcon = repo.alternativeIcon
             val themeMode = repo.themeMode
             val miuixMonet = repo.miuixMonet
@@ -50,7 +52,9 @@ class SettingsViewModel(
             val pageScale = repo.pageScale
             val moduleDescriptionMaxLines = repo.moduleDescriptionMaxLines
             val enableWebDebugging = repo.enableWebDebugging
+            val autoDeleteModuleZip = repo.autoDeleteModuleZip
             val showFullStatus = repo.showFullStatus
+            val hideHomeWarnings = repo.hideHomeWarnings
             val colorStyle = repo.colorStyle
             val colorSpec = repo.colorSpec
             val isLkmMode = repo.isLkmMode()
@@ -72,6 +76,8 @@ class SettingsViewModel(
             val isKernelUmountEnabled = repo.isKernelUmountEnabled()
             val selinuxHideStatus = repo.getSelinuxHideStatus()
             val isSelinuxHideEnabled = repo.isSelinuxHideEnabled()
+            val avcSpoofStatus = repo.getAvcSpoofStatus()
+            val isAvcSpoofEnabled = repo.isAvcSpoofEnabled()
             val mountHideStatus = repo.getMountHideStatus()
             val isMountHideEnabled = repo.isMountHideEnabled()
             val sulogStatus = repo.getSulogStatus()
@@ -103,8 +109,9 @@ class SettingsViewModel(
                 it.copy(
                     uiMode = uiMode,
                     appLanguage = appLanguage,
-                    checkUpdate = checkUpdate,
-                    checkModuleUpdate = checkModuleUpdate,
+                    checkUpdate = repo.checkUpdate,
+                    checkCiUpdate = repo.checkCiUpdate,
+                    checkModuleUpdate = repo.checkModuleUpdate,
                     alternativeIcon = alternativeIcon,
                     themeMode = themeMode,
                     miuixMonet = miuixMonet,
@@ -119,7 +126,9 @@ class SettingsViewModel(
                     pageScale = pageScale,
                     moduleDescriptionMaxLines = moduleDescriptionMaxLines,
                     enableWebDebugging = enableWebDebugging,
+                    autoDeleteModuleZip = autoDeleteModuleZip,
                     showFullStatus = showFullStatus,
+                    hideHomeWarnings = hideHomeWarnings,
                     colorStyle = colorStyle,
                     colorSpec = colorSpec,
                     suCompatStatus = suCompatStatus,
@@ -133,6 +142,8 @@ class SettingsViewModel(
                     isKernelUmountEnabled = isKernelUmountEnabled,
                     selinuxHideStatus = selinuxHideStatus,
                     isSelinuxHideEnabled = isSelinuxHideEnabled,
+                    avcSpoofStatus = avcSpoofStatus,
+                    isAvcSpoofEnabled = isAvcSpoofEnabled,
                     mountHideStatus = mountHideStatus,
                     isMountHideEnabled = isMountHideEnabled,
                     sulogStatus = sulogStatus,
@@ -145,6 +156,11 @@ class SettingsViewModel(
                 )
             }
         }
+    }
+
+    fun setCheckCiUpdate(enabled: Boolean) {
+        repo.checkCiUpdate = enabled
+        _uiState.update { it.copy(checkCiUpdate = enabled) }
     }
 
     fun setCheckUpdate(enabled: Boolean) {
@@ -194,6 +210,11 @@ class SettingsViewModel(
     fun setCheckModuleUpdate(enabled: Boolean) {
         repo.checkModuleUpdate = enabled
         _uiState.update { it.copy(checkModuleUpdate = enabled) }
+    }
+
+    fun setAutoDeleteModuleZip(enabled: Boolean) {
+        repo.autoDeleteModuleZip = enabled
+        _uiState.update { it.copy(autoDeleteModuleZip = enabled) }
     }
     fun setAlternativeIcon(context: Context, enabled: Boolean) {
         repo.alternativeIcon = enabled
@@ -298,6 +319,11 @@ class SettingsViewModel(
     fun setShowFullStatus(enabled: Boolean) {
         repo.showFullStatus = enabled
         _uiState.update { it.copy(showFullStatus = enabled) }
+    }
+
+    fun setHideHomeWarnings(enabled: Boolean) {
+        repo.hideHomeWarnings = enabled
+        _uiState.update { it.copy(hideHomeWarnings = enabled) }
     }
 
     fun setSuCompatMode(mode: Int) {
@@ -424,6 +450,19 @@ class SettingsViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             if (repo.setDefaultUmountModules(enabled)) {
                 _uiState.update { it.copy(isDefaultUmountModules = enabled) }
+            }
+        }
+    }
+
+    fun setAvcSpoofEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (repo.setAvcSpoofEnabled(enabled)) {
+                repo.execKsudFeatureSave()
+                _uiState.update { it.copy(isAvcSpoofEnabled = repo.isAvcSpoofEnabled()) }
+            } else {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ksuApp, R.string.settings_avc_spoof_failed, Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

@@ -6,7 +6,9 @@
 #include <linux/mutex.h>
 #include <linux/errno.h>
 
+
 #include "uapi/extension.h"
+#include "dynamic_manager.h"
 
 /*
  * An extension is a KernelSU subsystem richer than a single bit. Each

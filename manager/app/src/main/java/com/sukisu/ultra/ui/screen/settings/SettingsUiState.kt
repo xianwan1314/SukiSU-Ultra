@@ -10,7 +10,9 @@ data class SettingsUiState(
     val uiMode: String = UiMode.DEFAULT_VALUE,
     val appLanguage: String = "",
     val checkUpdate: Boolean = true,
+    val checkCiUpdate: Boolean = false,
     val checkModuleUpdate: Boolean = true,
+    val autoDeleteModuleZip: Boolean = false,
     val alternativeIcon : Boolean = false,
     val themeMode: Int = 0,
     val miuixMonet: Boolean = false,
@@ -28,6 +30,7 @@ data class SettingsUiState(
     val moduleDescriptionMaxLines: Int = 4,
     val enableWebDebugging: Boolean = false,
     val showFullStatus: Boolean = true,
+    val hideHomeWarnings: Boolean = false,
 
     // Su Compat
     val suCompatStatus: String = "",
@@ -41,6 +44,10 @@ data class SettingsUiState(
     // SELinux Hide
     val selinuxHideStatus: String = "",
     val isSelinuxHideEnabled: Boolean = false,
+
+    // AVC log spoofing
+    val avcSpoofStatus: String = "",
+    val isAvcSpoofEnabled: Boolean = false,
 
     // Mount Hide
     val mountHideStatus: String = "",
@@ -74,7 +81,9 @@ data class SettingsUiState(
 @Immutable
 data class SettingsScreenActions(
     val onSetCheckUpdate: (Boolean) -> Unit,
+    val onSetCheckCiUpdate: (Boolean) -> Unit,
     val onSetCheckModuleUpdate: (Boolean) -> Unit,
+    val onSetAutoDeleteModuleZip: (Boolean) -> Unit,
     val onOpenTheme: () -> Unit,
     val onSetUiModeIndex: (Int) -> Unit,
     val onOpenProfileTemplate: () -> Unit,
@@ -82,6 +91,7 @@ data class SettingsScreenActions(
     val onSetSuCompatMode: (Int) -> Unit,
     val onSetKernelUmountEnabled: (Boolean) -> Unit,
     val onSetSelinuxHideEnabled: (Boolean) -> Unit,
+    val onSetAvcSpoofEnabled: (Boolean) -> Unit,
     val onSetMountHideEnabled: (Boolean) -> Unit,
     val onSetSulogEnabled: (Boolean) -> Unit,
     val onSetAdbRootEnabled: (Boolean) -> Unit,
@@ -91,7 +101,6 @@ data class SettingsScreenActions(
     val onSetAutoJailbreak: (Boolean) -> Unit,
     val onSetUseSoftReboot: (Boolean) -> Unit,
     val onOpenAbout: () -> Unit,
-    val onSetAlternativeIcon: (Boolean) -> Unit,
     val onOpenTools: () -> Unit,
     val onOpenSusfsConfig: () -> Unit,
     val onOpenExtensions: () -> Unit,

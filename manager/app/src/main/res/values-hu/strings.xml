@@ -67,7 +67,7 @@ Csatlakozzon a %2$s csatornánkhoz</string>
     <string name="module_version">Verzió</string>
     <string name="send_log">Naplók küldése</string>
     <string name="reboot_to_apply">Indítsa újra a készüléket a változások érvényesítéséhez</string>
-    <string name="home_support_content">A KernelSU ingyenes, nyílt forráskódú és mindig is az lesz. Ön azonban adományozással megmutathatja, hogy törődik a projekttel.</string>
+    <string name="home_support_content">A SukiSU ingyenes, nyílt forráskódú és mindig is az lesz. Ön azonban adományozással megmutathatja, hogy törődik a projekttel.</string>
     <string name="profile_namespace_global">Globális</string>
     <string name="profile_umount_modules">Modulok leválasztása</string>
     <string name="failed_to_update_app_profile">Nem sikerült frissíteni az App Profilt ehhez: %s</string>
@@ -138,4 +138,7 @@ Csatlakozzon a %2$s csatornánkhoz</string>
     <string name="profile_flags_desc_no_new_privs">Megakadályozza a jogosultságok további kiterjesztését a SukiSU-n keresztül ezen root profil kontextusán belül.</string>
     <string name="install_force_backup">Biztonsági mentés gyári képként</string>
     <string name="install_force_backup_summary">Kérjük, győződj meg róla, hogy a kiválasztott boot lemezkép a gyári lemezkép</string>
+    <string name="settings_check_ci_update">CI frissítések keresése</string>
+    <string name="settings_check_ci_update_summary">A main ág CI buildek ellenőrzése a kezdőlapon és értesítés, ha új frissítés érhető el.</string>
+    <string name="settings_module_check_update">Modulfrissítések keresése</string>
 </resources>

@@ -13,6 +13,7 @@ object SuSFSConfig {
     const val KEY_AUTO_START_ENABLED = "auto_start_enabled"
     const val KEY_SUS_PATHS = "sus_paths"
     const val KEY_SUS_LOOP_PATHS = "sus_loop_paths"
+    const val KEY_PRIORITY_UID_FILTER = "priority_uid_filter"
     const val KEY_SUS_MAPS = "sus_maps"
     const val KEY_ENABLE_LOG = "enable_log"
     const val KEY_EXECUTE_IN_POST_FS_DATA = "execute_in_post_fs_data"
@@ -41,6 +42,19 @@ object SuSFSConfig {
     }
 
     suspend fun get(key: String): String = configGet(key)
+
+    suspend fun getAll(): Map<String, String> = withContext(Dispatchers.IO) {
+        val output = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        val result = Shell.getShell().newJob()
+            .add("${shellQuote(getKsuDaemonPath())} susfs config list --json")
+            .to(output, errors).exec()
+        check(result.isSuccess) { errors.joinToString("\n").ifBlank { "Failed to read SUSFS configuration" } }
+        val values = org.json.JSONObject(output.joinToString("\n"))
+        buildMap {
+            values.keys().forEach { key -> put(key, values.getString(key)) }
+        }
+    }
 
     suspend fun configSet(key: String, value: String): Boolean = withContext(Dispatchers.IO) {
         val shell = Shell.getShell()

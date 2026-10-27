@@ -58,7 +58,7 @@
     <string name="home_click_to_learn_kernelsu">Õpi SukiSUd paigaldama ja mooduleid kasutama</string>
     <string name="home_support_title">Toeta meid</string>
     <string name="profile_groups">Grupid</string>
-    <string name="home_support_content">KernelSU on, ja alati jääb, tasuta ning avatud lähtekoodiga kättesaadavaks. Sellegipoolest võid sa näidata, et hoolid, ning teha annetuse.</string>
+    <string name="home_support_content">SukiSU on, ja alati jääb, tasuta ning avatud lähtekoodiga kättesaadavaks. Sellegipoolest võid sa näidata, et hoolid, ning teha annetuse.</string>
     <string name="profile_template">Mall</string>
     <string name="about_source_code">Vaata lähtekoodi %1$sis<br/>
 Liitu meie %2$si kanaliga</string>
@@ -136,4 +136,7 @@ Liitu meie %2$si kanaliga</string>
     <string name="profile_flags_desc_no_new_privs">Takistab õiguste edasist tõstmist SukiSU kaudu selle root-profiili kontekstis.</string>
     <string name="install_force_backup">Varunda kui tehasepilt</string>
     <string name="install_force_backup_summary">Veendu, et valitud boot-tõmmis on tehasepilt</string>
+    <string name="settings_check_ci_update">Kontrolli CI uuendusi</string>
+    <string name="settings_check_ci_update_summary">Kontrolli pealehel main haru CI ehitusi ja teavita, kui uuendus on saadaval.</string>
+    <string name="settings_module_check_update">Kontrolli moodulite uuendusi</string>
 </resources>

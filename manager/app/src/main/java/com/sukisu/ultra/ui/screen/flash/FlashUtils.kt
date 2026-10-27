@@ -29,11 +29,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import com.sukisu.ultra.R
+import com.sukisu.ultra.data.repository.isAutoDeleteModuleZipEnabled
 import com.sukisu.ultra.ui.util.FlashResult
 import com.sukisu.ultra.ui.util.LkmSelection
 import com.sukisu.ultra.ui.util.downloadBoot
 import com.sukisu.ultra.ui.util.flashModule
 import com.sukisu.ultra.ui.util.installBoot
+import com.sukisu.ultra.ui.util.patchKpmBoot
 import com.sukisu.ultra.ui.util.restoreBoot
 import com.sukisu.ultra.ui.util.uninstallPermanently
 import java.io.File
@@ -82,6 +84,9 @@ sealed class FlashIt : Parcelable {
         val blockModules: String = "",
         val spoofRelease: String = "",
         val spoofVersion: String = "",
+        val kpmEnabled: Boolean = false,
+        val kpmUndo: Boolean = false,
+        val kpmBoot: Uri? = null,
     ) : FlashIt()
 
     @Parcelize
@@ -95,7 +100,13 @@ sealed class FlashIt : Parcelable {
         val blockModules: String = "",
         val spoofRelease: String = "",
         val spoofVersion: String = "",
+        val kpmEnabled: Boolean = false,
+        val kpmUndo: Boolean = false,
+        val kpmBoot: Uri? = null,
     ) : FlashIt()
+
+    @Parcelize
+    data class PatchKpmBoot(val boot: Uri? = null, val undo: Boolean = false) : FlashIt()
 
     @Parcelize
     data class FlashModules(val uris: List<Uri>) : FlashIt()
@@ -110,11 +121,12 @@ sealed class FlashIt : Parcelable {
 fun flashModulesSequentially(
     uris: List<Uri>,
     onStdout: (String) -> Unit,
-    onStderr: (String) -> Unit
+    onStderr: (String) -> Unit,
+    deleteInstalledZips: Boolean = false,
 ): FlashResult {
     var needsReboot = false
     for (uri in uris) {
-        flashModule(uri, onStdout, onStderr).apply {
+        flashModule(uri, onStdout, onStderr, deleteSourceOnSuccess = deleteInstalledZips).apply {
             needsReboot = needsReboot || showReboot
             if (code != 0) {
                 return FlashResult(code, err, needsReboot)
@@ -143,7 +155,10 @@ fun flashIt(
             flashIt.spoofRelease,
             flashIt.spoofVersion,
             onStdout,
-            onStderr
+            onStderr,
+            kpmEnabled = flashIt.kpmEnabled,
+            kpmUndo = flashIt.kpmUndo,
+            kpmBoot = flashIt.kpmBoot,
         )
 
         is FlashIt.DownloadBoot -> downloadBoot(
@@ -157,13 +172,22 @@ fun flashIt(
             flashIt.spoofRelease,
             flashIt.spoofVersion,
             onStdout,
-            onStderr
+            onStderr,
+            kpmEnabled = flashIt.kpmEnabled,
+            kpmUndo = flashIt.kpmUndo,
+            kpmBoot = flashIt.kpmBoot,
         )
 
         is FlashIt.FlashModules -> {
-            flashModulesSequentially(flashIt.uris, onStdout, onStderr)
+            flashModulesSequentially(
+                uris = flashIt.uris,
+                onStdout = onStdout,
+                onStderr = onStderr,
+                deleteInstalledZips = isAutoDeleteModuleZipEnabled(),
+            )
         }
 
+        is FlashIt.PatchKpmBoot -> patchKpmBoot(flashIt.boot, onStdout, onStderr, undo = flashIt.undo)
         FlashIt.FlashRestore -> restoreBoot(onStdout, onStderr)
         FlashIt.FlashUninstall -> uninstallPermanently(onStdout, onStderr)
     }

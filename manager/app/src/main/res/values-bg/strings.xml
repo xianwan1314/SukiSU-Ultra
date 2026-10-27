@@ -50,7 +50,7 @@
     <string name="home_learn_kernelsu_url">https://sukisu.org/guide/</string>
     <string name="home_click_to_learn_kernelsu">Научи как да изтеглите SukiSU и да използвате модули.</string>
     <string name="home_support_title">Помогнете Ни</string>
-    <string name="home_support_content">KernelSU си е, и винаги ще е безплатен, и с отворен код. Обаче, можете да ни покажете че се интересувате като ни направите дарение.</string>
+    <string name="home_support_content">SukiSU си е, и винаги ще е безплатен, и с отворен код. Обаче, можете да ни покажете че се интересувате като ни направите дарение.</string>
     <string name="about_source_code"><![CDATA[View source code at %1$s<br/>Присъединете се към нашия%2$s канал]]></string>
     <string name="profile_default">По подразбиране</string>
     <string name="profile_template">Шаблон</string>
@@ -182,4 +182,6 @@
     <string name="profile_flags_desc_no_new_privs">Предотвратява по-нататъшно повишаване на привилегиите чрез SukiSU в контекста на този root профил.</string>
     <string name="install_force_backup">Архивирай като оригинален образ</string>
     <string name="install_force_backup_summary">Моля, уверете се, че избраният от вас boot образ е оригиналният образ</string>
+    <string name="settings_check_ci_update">Провери за актуализации на CI</string>
+    <string name="settings_check_ci_update_summary">Проверявай за компилации на CI от клон main на началната страница и извести при налична актуализация.</string>
 </resources>

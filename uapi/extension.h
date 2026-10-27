@@ -58,6 +58,8 @@ enum ksu_extension_id {
     KSU_EXTENSION_CPU_SPOOF = 1,
     KSU_EXTENSION_UMOUNT_PATHS = 2,
     KSU_EXTENSION_DYNAMIC_MANAGER = 3,
+    KSU_EXTENSION_SUSFS = 4,
+    KSU_EXTENSION_VERSION_SPOOF = 5,
 
     KSU_EXTENSION_MAX
 };
@@ -82,6 +84,44 @@ struct ksu_extension_cmd {
     __u64 user_ptr;            /* opaque user pointer, in (for KSU_EXTENSION_IO) */
 };
 
+// 0. KPM
+static const __u32 SUKISU_KPM_LOAD = 1;
+static const __u32 SUKISU_KPM_UNLOAD = 2;
+static const __u32 SUKISU_KPM_NUM = 3;
+static const __u32 SUKISU_KPM_LIST = 4;
+static const __u32 SUKISU_KPM_INFO = 5;
+static const __u32 SUKISU_KPM_CONTROL = 6;
+static const __u32 SUKISU_KPM_VERSION = 7;
+/* Optional event-aware load used for boot-stage modules. */
+static const __u32 SUKISU_KPM_LOAD_EVENT = 8;
+
+struct ksu_kpm_cmd {
+    __aligned_u64 control_code;
+    __aligned_u64 arg1;
+    __aligned_u64 arg2;
+    __aligned_u64 result_code;
+};
+
+/* arg2 payload for SUKISU_KPM_LOAD_EVENT. Both fields are user pointers. */
+struct ksu_kpm_load_event_cmd {
+    __aligned_u64 args;
+    __aligned_u64 event;
+};
+
+// 1. CPU_SPOOF
+struct ksu_set_spoof_cpu_cmd {
+    __u32 cpu_index;  /* Target processor core index */
+    __u32 midr;       /* Main ID Register payload */
+    __u32 bogomips;   /* BogoMIPS performance timing metric */
+    __u64 hwcap;      /* Main ELF Hardware Capabilities mask */
+    __u64 hwcap2;     /* Auxiliary ELF Hardware Capabilities mask */
+};
+// 2. UMOUNT_PATHS
+struct ksu_list_try_umount_cmd {
+    __aligned_u64 arg; // User buffer
+    __u32 buf_size; // Buffer size provided by userspace
+};
+
 /*
  * Umount paths extension io payload. A small header is followed by the
  * legacy ksu_add_try_umount_cmd or ksu_list_try_umount_cmd payload.
@@ -101,7 +141,29 @@ struct ksu_extension_umount_cmd {
 #define KSU_UMOUNT_IO_OP_DEL  2u
 #define KSU_UMOUNT_IO_OP_LIST 3u
 
-/* IOCTL command: one ioctl, four extensions. */
+/* 5. VERSION_SPOOF */
+#define KSU_VERSION_SPOOF_IO_GET   1u
+#define KSU_VERSION_SPOOF_IO_SET   2u
+#define KSU_VERSION_SPOOF_IO_RESET 3u
+#define KSU_VERSION_SPOOF_WORKING_VERSION (1u << 0)
+#define KSU_VERSION_SPOOF_FULL_VERSION    (1u << 1)
+#define KSU_VERSION_SPOOF_UAPI_VERSION    (1u << 2)
+#define KSU_VERSION_SPOOF_MASK_ALL \
+    (KSU_VERSION_SPOOF_WORKING_VERSION | KSU_VERSION_SPOOF_FULL_VERSION | \
+     KSU_VERSION_SPOOF_UAPI_VERSION)
+struct ksu_version_spoof_cmd {
+    __u32 op;
+    __u32 mask;
+    __u32 working_version;
+    __u32 uapi_version;
+    char full_version[255];
+    /* Read-only build values returned by GET. */
+    __u32 default_working_version;
+    __u32 default_uapi_version;
+    char default_full_version[255];
+};
+
+/* IOCTL command: one ioctl, extension handlers are enumerated above. */
 static const __u32 KSU_IOCTL_EXTENSION =
     _IOC(_IOC_READ | _IOC_WRITE, 'K', 300, sizeof(struct ksu_extension_cmd));
 

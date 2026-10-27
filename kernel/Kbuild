@@ -34,6 +34,7 @@ kernelsu-objs += manager/apk_sign.o
 kernelsu-objs += manager/pkg_observer.o
 kernelsu-objs += manager/throne_tracker.o
 kernelsu-objs += extension/dynamic_manager.o
+kernelsu-objs += extension/dynamic_sig_fallback.o
 endif
 
 kernelsu-objs += policy/allowlist.o
@@ -43,6 +44,8 @@ kernelsu-objs += policy/feature.o
 kernelsu-objs += extension/extension.o
 kernelsu-objs += extension/cpu_spoof.o
 kernelsu-objs += extension/umount_paths.o
+kernelsu-objs += extension/susfs_extension.o
+kernelsu-objs += extension/version_spoof.o
 
 kernelsu-objs += runtime/boot_event.o
 kernelsu-objs += runtime/ksud_integration.o
@@ -64,8 +67,12 @@ kernelsu-objs += feature/selinux_hide.o
 kernelsu-objs += feature/shell_su_adb_only.o
 
 kernelsu-objs += feature/uts_spoof.o
+kernelsu-objs += feature/avc_spoof.o
 
 ifdef KBUILD_EXTMOD
+ifeq ($(CONFIG_KPM),y)
+ccflags-y += -DCONFIG_KPM=1
+endif
 ifeq ($(CONFIG_KSU_DISABLE_MANAGER),y)
 ccflags-y += -DCONFIG_KSU_DISABLE_MANAGER=1
 endif
@@ -80,9 +87,22 @@ ccflags-y += -DCONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=1
 endif
 endif
 
-obj-$(CONFIG_KPM) += extension/kpm/kpm.o
-obj-$(CONFIG_KPM) += extension/kpm/compact.o
-obj-$(CONFIG_KPM) += extension/kpm/super_access.o
+ifeq ($(CONFIG_KPM),y)
+# These must be linked into kernelsu.ko too, not standalone obj-y objects.
+kernelsu-objs += extension/kpm/kpm.o
+kernelsu-objs += extension/kpm/compact.o
+kernelsu-objs += extension/kpm/super_access.o
+
+# Vendor backports may change these fields independently of LINUX_VERSION_CODE.
+# Inspect the actual target source header, not the host kernel or KMI label.
+ksu_netlink_cfg := $(shell sed -n '/struct netlink_kernel_cfg {/,/^};/p' $(srctree)/include/linux/netlink.h)
+ifneq ($(findstring cb_mutex,$(ksu_netlink_cfg)),)
+ccflags-y += -DKSU_NETLINK_CFG_HAS_CB_MUTEX=1
+endif
+ifneq ($(findstring compare,$(ksu_netlink_cfg)),)
+ccflags-y += -DKSU_NETLINK_CFG_HAS_COMPARE=1
+endif
+endif
 # kpm.c provides the extension glue (ksu_extension_kpm_*), referenced
 # unconditionally by extension/extension.c, so build it even when
 # CONFIG_KPM is off — its set/get/io become no-ops.
@@ -160,7 +180,7 @@ KSU_SRC := $(if $(filter $(srctree),$(src)),$(src),$(srctree)/$(src))
 KSU_SRC := $(if $(wildcard $(KSU_SRC)/../.git),$(KSU_SRC),$(MDIR))
 
 git_short_sha    = $(shell cd $(KSU_SRC) && $(GIT_BIN) rev-parse --short=8 HEAD 2>/dev/null)
-git_branch       = $(shell cd $(KSU_SRC) && $(GIT_BIN) rev-parse --abbrev-ref HEAD 2>/dev/null)
+git_branch       = $(if $(strip $(KSU_BUILD_REF)),$(KSU_BUILD_REF),$(shell cd $(KSU_SRC) && $(GIT_BIN) rev-parse --abbrev-ref HEAD 2>/dev/null))
 git_commit_count = $(shell cd $(KSU_SRC) && $(GIT_BIN) rev-list --count HEAD 2>/dev/null)
 git_latest_tag   = $(shell cd $(KSU_SRC) && $(GIT_BIN) describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
 

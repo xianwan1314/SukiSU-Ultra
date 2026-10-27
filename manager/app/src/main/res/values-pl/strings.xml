@@ -45,7 +45,7 @@
     <string name="home_learn_kernelsu_url">https://sukisu.org/guide/</string>
     <string name="home_click_to_learn_kernelsu">Dowiedz się jak zainstalować SukiSU i jak korzystać z modułów.</string>
     <string name="home_support_title">Wesprzyj nas</string>
-    <string name="home_support_content">KernelSU jest i zawsze będzie darmowy oraz otwarty. Niemniej jednak możesz nam pokazać, że Ci zależy, wysyłając darowiznę.</string>
+    <string name="home_support_content">SukiSU jest i zawsze będzie darmowy oraz otwarty. Niemniej jednak możesz nam pokazać, że Ci zależy, wysyłając darowiznę.</string>
     <string name="about_source_code"><![CDATA[Przejrzyj kod źródłowy na %1$s<br/>Dołącz do kanału %2$s]]></string>
     <string name="profile" translatable="false">Profil aplikacji</string>
     <string name="profile_default">Domyślny</string>
@@ -186,4 +186,6 @@
     <string name="profile_flags_desc_no_new_privs">Zapobiega dalszemu podnoszeniu uprawnień przez SukiSU w kontekście tego profilu root.</string>
     <string name="install_force_backup">Utwórz kopię zapasową jako obraz fabryczny</string>
     <string name="install_force_backup_summary">Upewnij się, że wybrany obraz boot to obraz fabryczny</string>
+    <string name="settings_check_ci_update">Sprawdzaj aktualizacje CI</string>
+    <string name="settings_check_ci_update_summary">Sprawdzaj kompilacje CI gałęzi main na stronie głównej i powiadamiaj, gdy dostępna jest aktualizacja.</string>
 </resources>

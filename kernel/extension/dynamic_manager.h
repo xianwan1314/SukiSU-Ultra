@@ -9,8 +9,7 @@
 
 #include "extension.h"
 #include "uapi/manager.h"
-#include "uapi/supercall.h"
-
+#include "uapi/extension.h"
 /*
  * Dynamic manager extension.
  *

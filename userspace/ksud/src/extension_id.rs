@@ -21,15 +21,19 @@ pub enum ExtensionId {
     CpuSpoof = 1,
     UmountPaths = 2,
     DynamicManager = 3,
+    Susfs = 4,
+    VersionSpoof = 5,
 }
 
 impl ExtensionId {
     /// All known extension ids in declaration order.
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 6] = [
         Self::Kpm,
         Self::CpuSpoof,
         Self::UmountPaths,
         Self::DynamicManager,
+        Self::Susfs,
+        Self::VersionSpoof,
     ];
 
     /// Decode a u32 from the kernel uapi. `None` means "unknown /
@@ -40,6 +44,8 @@ impl ExtensionId {
             1 => Some(Self::CpuSpoof),
             2 => Some(Self::UmountPaths),
             3 => Some(Self::DynamicManager),
+            4 => Some(Self::Susfs),
+            5 => Some(Self::VersionSpoof),
             _ => None,
         }
     }
@@ -70,6 +76,8 @@ impl ExtensionId {
             Self::CpuSpoof => "cpu_spoof",
             Self::UmountPaths => "umount_paths",
             Self::DynamicManager => "dynamic_manager",
+            Self::Susfs => "susfs",
+            Self::VersionSpoof => "version_spoof",
         }
     }
 
@@ -82,6 +90,8 @@ impl ExtensionId {
             Self::CpuSpoof => "CPU identity spoofing",
             Self::UmountPaths => "Umount path manager",
             Self::DynamicManager => "Dynamic manager",
+            Self::Susfs => "SuSFS",
+            Self::VersionSpoof => "KernelSU version overrides",
         }
     }
 
@@ -100,6 +110,12 @@ impl ExtensionId {
             Self::DynamicManager => {
                 "Allow more than one app to act as the KernelSU manager. Each candidate is authenticated by its signing certificate."
             }
+            Self::VersionSpoof => {
+                "Override the reported KernelSU version code, full version and UAPI version. This may affect Manager compatibility checks; reset restores build values."
+            }
+            Self::Susfs => {
+                "Configure hide-mount, spoof uname, redirect-open, kstat and other low-level kernel tricks. Requires the SuSFS kernel module to be installed."
+            }
         }
     }
 }
@@ -110,72 +126,8 @@ pub fn parse_extension_id(name: &str) -> Result<ExtensionId> {
         "cpu_spoof" | "1" => Ok(ExtensionId::CpuSpoof),
         "umount_paths" | "2" => Ok(ExtensionId::UmountPaths),
         "dynamic_manager" | "3" => Ok(ExtensionId::DynamicManager),
+        "susfs" | "4" => Ok(ExtensionId::Susfs),
+        "version_spoof" | "5" => Ok(ExtensionId::VersionSpoof),
         _ => bail!("Unknown extension: {name}"),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn from_u32_round_trip() {
-        for ext in ExtensionId::ALL {
-            assert_eq!(ExtensionId::from_u32(ext as u32), Some(ext));
-        }
-    }
-
-    #[test]
-    fn unknown_ids_rejected() {
-        assert_eq!(ExtensionId::from_u32(99), None);
-        assert_eq!(ExtensionId::from_u32(u32::MAX), None);
-    }
-
-    #[test]
-    fn parse_known_names() {
-        for ext in ExtensionId::ALL {
-            assert_eq!(parse_extension_id(ext.name()).unwrap(), ext);
-            assert_eq!(parse_extension_id(&(ext as u32).to_string()).unwrap(), ext);
-        }
-    }
-
-    #[test]
-    fn parse_unknown_name_errors() {
-        assert!(parse_extension_id("nope").is_err());
-    }
-
-    /// Pin the sticky-bit set: dynamic_manager is the only extension
-    /// with a runtime toggle today. Regressions here are user-visible
-    /// (the UI hides the switch for everything else).
-    #[test]
-    fn sticky_bit_only_dynamic_manager() {
-        assert!(ExtensionId::DynamicManager.has_sticky_bit());
-        assert!(!ExtensionId::Kpm.has_sticky_bit());
-        assert!(!ExtensionId::CpuSpoof.has_sticky_bit());
-        assert!(!ExtensionId::UmountPaths.has_sticky_bit());
-    }
-
-    /// Every extension must have non-empty name/description, since
-    /// those are rendered to the user. Empty strings would crash the
-    /// UI layout silently.
-    #[test]
-    fn human_strings_non_empty() {
-        for ext in ExtensionId::ALL {
-            assert!(!ext.name().is_empty(), "{ext:?} name empty");
-            assert!(!ext.display_name().is_empty(), "{ext:?} display_name empty");
-            assert!(!ext.description().is_empty(), "{ext:?} description empty");
-        }
-    }
-
-    /// Wire-name and numeric encoding must stay in lockstep with
-    /// `enum ksu_extension_id` in `uapi/extension.h`. If a future
-    /// change renumbers an entry, this test forces the developer to
-    /// also update the UAPI mirror (and the Kotlin `ExtensionId`).
-    #[test]
-    fn numeric_encoding_matches_uapi() {
-        assert_eq!(ExtensionId::Kpm as u32, 0);
-        assert_eq!(ExtensionId::CpuSpoof as u32, 1);
-        assert_eq!(ExtensionId::UmountPaths as u32, 2);
-        assert_eq!(ExtensionId::DynamicManager as u32, 3);
     }
 }

@@ -1,37 +1,25 @@
 package com.sukisu.ultra.ui.screen.susfs.component.material
 
-import android.annotation.SuppressLint
 import android.content.pm.PackageInfo
-import android.util.Log
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Android
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.AlertDialog
@@ -47,24 +35,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
 import com.sukisu.ultra.R
 import com.sukisu.ultra.ui.screen.susfs.util.AppInfoCache
-import com.sukisu.ultra.ui.screen.susfs.util.AppInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -109,7 +91,6 @@ fun AddPathDialogMaterial(
                     onClick = {
                         if (newPath.isNotBlank()) {
                             onConfirm(newPath.trim())
-                            newPath = ""
                         }
                     },
                     enabled = newPath.isNotBlank() && !isLoading
@@ -131,197 +112,6 @@ fun AddPathDialogMaterial(
     }
 }
 
-@Composable
-fun AddAppPathDialogMaterial(
-    showDialog: Boolean,
-    onDismiss: () -> Unit,
-    onConfirm: (List<String>) -> Unit,
-    isLoading: Boolean,
-    apps: List<AppInfo> = emptyList(),
-    onLoadApps: () -> Unit,
-    existingSusPaths: Set<String> = emptySet()
-) {
-    var searchText by remember { mutableStateOf("") }
-    var selectedApps by remember { mutableStateOf(setOf<AppInfo>()) }
-
-    val addedPackageNames = remember(existingSusPaths) {
-        existingSusPaths.mapNotNull { path ->
-            val regex = Regex(".*/Android/data/([^/]+)/?.*")
-            regex.find(path)?.groupValues?.get(1)
-        }.toSet()
-    }
-
-    val availableApps = remember(apps, addedPackageNames) {
-        apps.filter { app ->
-            !addedPackageNames.contains(app.packageName)
-        }
-    }
-
-    val filteredApps = remember(availableApps, searchText) {
-        if (searchText.isBlank()) {
-            availableApps
-        } else {
-            availableApps.filter { app ->
-                app.appName.contains(searchText, ignoreCase = true) ||
-                        app.packageName.contains(searchText, ignoreCase = true)
-            }
-        }
-    }
-
-    LaunchedEffect(showDialog) {
-        if (showDialog && apps.isEmpty()) {
-            onLoadApps()
-        }
-        if (showDialog) {
-            selectedApps = setOf()
-        }
-    }
-
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                onDismiss()
-                selectedApps = setOf()
-                searchText = ""
-            },
-            title = { Text(stringResource(R.string.susfs_add_app_path)) },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 400.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedTextField(
-                        value = searchText,
-                        onValueChange = { searchText = it },
-                        label = { Text(stringResource(R.string.search_apps)) },
-                        leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = null)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    if (selectedApps.isNotEmpty()) {
-                        Text(
-                            text = stringResource(R.string.selected_apps_count, selectedApps.size),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    if (filteredApps.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (availableApps.isEmpty()) {
-                                    stringResource(R.string.all_apps_already_added)
-                                } else {
-                                    stringResource(R.string.no_apps_found)
-                                },
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            items(filteredApps) { app ->
-                                val isSelected = selectedApps.contains(app)
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            selectedApps = if (isSelected) {
-                                                selectedApps - app
-                                            } else {
-                                                selectedApps + app
-                                            }
-                                        },
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (isSelected) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.surface
-                                        }
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        AppIconMaterial(
-                                            packageName = app.packageName,
-                                            modifier = Modifier.size(40.dp)
-                                        )
-                                        Column(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(start = 12.dp)
-                                        ) {
-                                            Text(
-                                                text = app.appName,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                            Text(
-                                                text = app.packageName,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                        Icon(
-                                            imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                                            contentDescription = null,
-                                            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (selectedApps.isNotEmpty()) {
-                            onConfirm(selectedApps.map { it.packageName })
-                        }
-                        selectedApps = setOf()
-                        searchText = ""
-                    },
-                    enabled = selectedApps.isNotEmpty() && !isLoading
-                ) {
-                    Text(stringResource(R.string.add))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        onDismiss()
-                        selectedApps = setOf()
-                        searchText = ""
-                    }
-                ) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
-}
-
-@SuppressLint("SdCardPath")
 @Composable
 fun AddKstatStaticallyDialogMaterial(
     showDialog: Boolean,
@@ -349,20 +139,20 @@ fun AddKstatStaticallyDialogMaterial(
             val parts = initialConfig.split("|")
             if (parts.size >= 13) {
                 newKstatPath = parts[0]
-                newKstatIno = if (parts[1] == "default") "" else parts[1]
-                newKstatDev = if (parts[2] == "default") "" else parts[2]
-                newKstatNlink = if (parts[3] == "default") "" else parts[3]
-                newKstatSize = if (parts[4] == "default") "" else parts[4]
-                newKstatAtime = if (parts[5] == "default") "" else parts[5]
-                newKstatAtimeNsec = if (parts[6] == "default") "" else parts[6]
-                newKstatMtime = if (parts[7] == "default") "" else parts[7]
-                newKstatMtimeNsec = if (parts[8] == "default") "" else parts[8]
-                newKstatCtime = if (parts[9] == "default") "" else parts[9]
-                newKstatCtimeNsec = if (parts[10] == "default") "" else parts[10]
-                newKstatBlocks = if (parts[11] == "default") "" else parts[11]
-                newKstatBlksize = if (parts[12] == "default") "" else parts[12]
+                newKstatIno = parts[1].takeUnless { it == "default" }.orEmpty()
+                newKstatDev = parts[2].takeUnless { it == "default" }.orEmpty()
+                newKstatNlink = parts[3].takeUnless { it == "default" }.orEmpty()
+                newKstatSize = parts[4].takeUnless { it == "default" }.orEmpty()
+                newKstatAtime = parts[5].takeUnless { it == "default" }.orEmpty()
+                newKstatAtimeNsec = parts[6].takeUnless { it == "default" }.orEmpty()
+                newKstatMtime = parts[7].takeUnless { it == "default" }.orEmpty()
+                newKstatMtimeNsec = parts[8].takeUnless { it == "default" }.orEmpty()
+                newKstatCtime = parts[9].takeUnless { it == "default" }.orEmpty()
+                newKstatCtimeNsec = parts[10].takeUnless { it == "default" }.orEmpty()
+                newKstatBlocks = parts[11].takeUnless { it == "default" }.orEmpty()
+                newKstatBlksize = parts[12].takeUnless { it == "default" }.orEmpty()
             }
-        } else if (showDialog && initialConfig.isEmpty()) {
+        } else if (showDialog) {
             newKstatPath = ""
             newKstatIno = ""
             newKstatDev = ""
@@ -396,18 +186,21 @@ fun AddKstatStaticallyDialogMaterial(
     }
 
     if (showDialog) {
-        AlertDialog(
+        com.sukisu.ultra.ui.component.material.ExpressiveDialog(
             onDismissRequest = {
                 onDismiss()
                 resetFields()
             },
-            title = { Text(stringResource(if (initialConfig.isNotEmpty()) R.string.edit_kstat_statically_title else R.string.add_kstat_statically_title)) },
+            title = {
+                Text(stringResource(if (initialConfig.isNotEmpty()) R.string.edit_kstat_statically_title else R.string.add_kstat_statically_title))
+            },
             text = {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(max = 500.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedTextField(
                         value = newKstatPath,
@@ -415,146 +208,54 @@ fun AddKstatStaticallyDialogMaterial(
                         label = { Text(stringResource(R.string.file_or_directory_path_label)) },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isLoading,
-                        singleLine = true
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.large
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = newKstatIno,
-                            onValueChange = { newKstatIno = it },
-                            label = { Text("ino") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = newKstatDev,
-                            onValueChange = { newKstatDev = it },
-                            label = { Text("dev") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
+                    KstatSectionMaterial(stringResource(R.string.kstat_section_identity)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            KstatNumberFieldMaterial("ino", newKstatIno, { newKstatIno = it }, !isLoading, Modifier.weight(1f))
+                            KstatNumberFieldMaterial("dev", newKstatDev, { newKstatDev = it }, !isLoading, Modifier.weight(1f))
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            KstatNumberFieldMaterial("nlink", newKstatNlink, { newKstatNlink = it }, !isLoading, Modifier.weight(1f))
+                            KstatNumberFieldMaterial("size", newKstatSize, { newKstatSize = it }, !isLoading, Modifier.weight(1f))
+                        }
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = newKstatNlink,
-                            onValueChange = { newKstatNlink = it },
-                            label = { Text("nlink") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = newKstatSize,
-                            onValueChange = { newKstatSize = it },
-                            label = { Text("size") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
+                    KstatSectionMaterial(stringResource(R.string.kstat_section_timestamps)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            KstatNumberFieldMaterial("atime", newKstatAtime, { newKstatAtime = it }, !isLoading, Modifier.weight(1f))
+                            KstatNumberFieldMaterial("atime_nsec", newKstatAtimeNsec, { newKstatAtimeNsec = it }, !isLoading, Modifier.weight(1f))
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            KstatNumberFieldMaterial("mtime", newKstatMtime, { newKstatMtime = it }, !isLoading, Modifier.weight(1f))
+                            KstatNumberFieldMaterial("mtime_nsec", newKstatMtimeNsec, { newKstatMtimeNsec = it }, !isLoading, Modifier.weight(1f))
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            KstatNumberFieldMaterial("ctime", newKstatCtime, { newKstatCtime = it }, !isLoading, Modifier.weight(1f))
+                            KstatNumberFieldMaterial("ctime_nsec", newKstatCtimeNsec, { newKstatCtimeNsec = it }, !isLoading, Modifier.weight(1f))
+                        }
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = newKstatAtime,
-                            onValueChange = { newKstatAtime = it },
-                            label = { Text("atime") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = newKstatAtimeNsec,
-                            onValueChange = { newKstatAtimeNsec = it },
-                            label = { Text("atime_nsec") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
+                    KstatSectionMaterial(stringResource(R.string.kstat_section_storage)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            KstatNumberFieldMaterial("blocks", newKstatBlocks, { newKstatBlocks = it }, !isLoading, Modifier.weight(1f))
+                            KstatNumberFieldMaterial("blksize", newKstatBlksize, { newKstatBlksize = it }, !isLoading, Modifier.weight(1f))
+                        }
                     }
 
-                    Row(
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                     ) {
-                        OutlinedTextField(
-                            value = newKstatMtime,
-                            onValueChange = { newKstatMtime = it },
-                            label = { Text("mtime") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = newKstatMtimeNsec,
-                            onValueChange = { newKstatMtimeNsec = it },
-                            label = { Text("mtime_nsec") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
+                        Text(
+                            text = stringResource(R.string.hint_use_default_value),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = newKstatCtime,
-                            onValueChange = { newKstatCtime = it },
-                            label = { Text("ctime") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = newKstatCtimeNsec,
-                            onValueChange = { newKstatCtimeNsec = it },
-                            label = { Text("ctime_nsec") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = newKstatBlocks,
-                            onValueChange = { newKstatBlocks = it },
-                            label = { Text("blocks") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = newKstatBlksize,
-                            onValueChange = { newKstatBlksize = it },
-                            label = { Text("blksize") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading,
-                            singleLine = true
-                        )
-                    }
-
-                    Text(
-                        text = stringResource(R.string.hint_use_default_value),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             },
             confirmButton = {
@@ -596,6 +297,54 @@ fun AddKstatStaticallyDialogMaterial(
             }
         )
     }
+}
+
+@Composable
+private fun KstatSectionMaterial(
+    title: String,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            content = {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                content()
+            }
+        )
+    }
+}
+
+@Composable
+private fun KstatNumberFieldMaterial(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = modifier,
+        enabled = enabled,
+        singleLine = true,
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberSigned
+        ),
+        shape = MaterialTheme.shapes.large
+    )
 }
 
 @Composable
@@ -778,80 +527,20 @@ fun AppIconMaterial(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var iconBitmap by remember(packageName, packageInfo) { mutableStateOf<ImageBitmap?>(null) }
-    var isLoadingIcon by remember(packageName, packageInfo) { mutableStateOf(true) }
-
-    LaunchedEffect(packageName, packageInfo) {
-        isLoadingIcon = true
-        iconBitmap = null
-
-        withContext(Dispatchers.IO) {
-            try {
-                val drawable = when {
-                    packageInfo != null -> {
-                        packageInfo.applicationInfo?.loadIcon(context.packageManager)
-                    }
-                    else -> {
-                        val cachedInfo = AppInfoCache.getAppInfo(packageName)
-                        if (cachedInfo?.drawable != null) {
-                            cachedInfo.drawable
-                        } else if (cachedInfo?.packageInfo != null) {
-                            cachedInfo.packageInfo.applicationInfo?.loadIcon(context.packageManager)
-                        } else {
-                            // 尝试从 PackageManager 获取
-                            try {
-                                val packageManager = context.packageManager
-                                val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
-                                val icon = packageManager.getApplicationIcon(applicationInfo)
-                                // 更新缓存
-                                val newCachedInfo = AppInfoCache.CachedAppInfo(
-                                    appName = packageName,
-                                    packageInfo = null,
-                                    drawable = icon
-                                )
-                                AppInfoCache.putAppInfo(packageName, newCachedInfo)
-                                icon
-                            } catch (e: Exception) {
-                                Log.d("AppIcon", "获取应用图标失败: $packageName", e)
-                                null
-                            }
-                        }
-                    }
-                }
-
-                iconBitmap = drawable?.toBitmap()?.asImageBitmap()
-            } catch (e: Exception) {
-                Log.d("AppIcon", "获取应用图标失败: $packageName", e)
-            } finally {
-                isLoadingIcon = false
+    val resolvedInfo by produceState(packageInfo, packageName, packageInfo) {
+        if (value == null) {
+            value = withContext(Dispatchers.IO) {
+                AppInfoCache.getAppInfoFromSuperUser(packageName)?.packageInfo
+                    ?: runCatching { context.packageManager.getPackageInfo(packageName, 0) }.getOrNull()
             }
         }
     }
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (iconBitmap == null) MaterialTheme.colorScheme.surfaceBright
-                else Color.Transparent
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (iconBitmap != null) {
-            Image(
-                bitmap = iconBitmap!!,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else if (!isLoadingIcon) {
-            // 显示占位图标
-            Icon(
-                imageVector = Icons.Default.Android,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
+    resolvedInfo?.let {
+        com.sukisu.ultra.ui.component.AppIconImage(
+            packageInfo = it,
+            label = packageName,
+            modifier = modifier,
+        )
     }
 }
 

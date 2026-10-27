@@ -1,6 +1,6 @@
 package com.sukisu.ultra.ui.screen.install
 
-import androidx.compose.animation.core.animateFloatAsState
+import  androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -19,7 +19,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SdStorage
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -44,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sukisu.ultra.R
 import com.sukisu.ultra.getKernelVersion
+import com.sukisu.ultra.ui.kernelFlash.KpmPatchOption
 import com.sukisu.ultra.ui.component.dialog.rememberConfirmDialog
 import com.sukisu.ultra.ui.component.material.ExpressiveScaffold
 import com.sukisu.ultra.ui.component.material.SegmentedCheckboxItem
@@ -66,9 +66,6 @@ import com.sukisu.ultra.ui.component.material.SegmentedTextField
 import com.sukisu.ultra.ui.component.material.SnackBarHost
 import com.sukisu.ultra.ui.component.material.TopBarBackButton
 import com.sukisu.ultra.ui.component.material.expressiveTopAppBarColors
-import com.sukisu.ultra.ui.kernelFlash.KpmPatchOption
-import com.sukisu.ultra.ui.kernelFlash.KpmPatchSelectionDialog
-import com.sukisu.ultra.ui.kernelFlash.component.SlotSelectionDialog
 import com.sukisu.ultra.ui.util.LkmSelection
 import com.sukisu.ultra.ui.util.isAbDevice
 
@@ -89,29 +86,6 @@ internal fun InstallScreenMaterial(
     }
     val isGkiDevice by produceState(initialValue = false) {
         value = getKernelVersion().isGKI()
-    }
-
-    // 槽位选择对话框
-    if (uiState.showSlotSelectionDialog && isAbDevice) {
-        SlotSelectionDialog(
-            show = true,
-            onDismiss = { uiState.anyKernel3State?.onDismissSlotDialog() },
-            onSlotSelected = { slot ->
-                uiState.anyKernel3State?.onSlotSelected(slot)
-            }
-        )
-    }
-
-    // KPM补丁选择对话框
-    if (uiState.showKpmPatchDialog) {
-        KpmPatchSelectionDialog(
-            show = true,
-            currentOption = uiState.kpmPatchOption,
-            onDismiss = { uiState.anyKernel3State?.onDismissPatchDialog() },
-            onOptionSelected = { option ->
-                uiState.anyKernel3State?.onOptionSelected(option)
-            }
-        )
     }
 
     LaunchedEffect(Unit) {
@@ -157,7 +131,7 @@ internal fun InstallScreenMaterial(
                     } else {
                         uiState.partitionSelectionIndex
                     }
-                    if (partitionItems.isNotEmpty()) add {
+                    if (partitionItems.isNotEmpty() && uiState.installMethod !is InstallMethod.HorizonKernel) add {
                         SegmentedDropdownItem(
                             enabled = uiState.canSelectPartition,
                             items = partitionItems,
@@ -212,6 +186,54 @@ internal fun InstallScreenMaterial(
                     }
                 }
             )
+            if (uiState.canPatchKpm) {
+                SegmentedColumn(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                ) {
+                    item {
+                        SegmentedDropdownItem(
+                            title = stringResource(R.string.install_kpm_operation),
+                            summary = stringResource(R.string.install_kpm_summary),
+                            items = listOf(stringResource(R.string.kpm_follow_kernel_file), stringResource(R.string.enable_kpm_patch), stringResource(R.string.enable_kpm_undo_patch)),
+                            selectedIndex = KpmPatchOption.entries.indexOf(uiState.kpmPatchOption),
+                            onItemSelected = { actions.onKpmOptionChange(KpmPatchOption.entries[it]) },
+                        )
+                    }
+                    item(visible = uiState.canSelectKpmBoot) {
+                        SegmentedListItem(
+                            headlineContent = { Text(stringResource(R.string.install_kpm_manual)) },
+                            supportingContent = {
+                                Text(uiState.kpmBootUri?.lastPathSegment ?: stringResource(
+                                    if (uiState.installMethod == null) R.string.install_kpm_auto_current_boot
+                                    else R.string.install_kpm_auto
+                                ))
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.Filled.ExpandMore,
+                                    stringResource(R.string.expand),
+                                    Modifier.graphicsLayer { rotationZ = if (uiState.kpmBootExpanded) 180f else 0f },
+                                )
+                            },
+                            onClick = actions.onToggleKpmBoot,
+                        )
+                    }
+                    item(visible = uiState.canSelectKpmBoot && uiState.kpmBootExpanded) {
+                        SegmentedListItem(
+                            headlineContent = { Text(stringResource(R.string.select_file)) },
+                            supportingContent = { uiState.kpmBootUri?.let { Text(it.lastPathSegment.orEmpty()) } },
+                            onClick = actions.onPatchKpmFile,
+                            trailingContent = {
+                                if (uiState.kpmBootUri != null) {
+                                    IconButton(onClick = actions.onClearKpmBoot) {
+                                        Icon(Icons.Filled.Close, stringResource(R.string.install_kpm_clear))
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+            }
             SegmentedColumn(
                 modifier = Modifier.padding(horizontal = 16.dp),
             ) {
@@ -331,41 +353,13 @@ internal fun InstallScreenMaterial(
                             )
                         }
                     }
-                    item {
-                        SegmentedListItem(
-                            onClick = { actions.onReopenKpmDialog(method) },
-                            leadingContent = {
-                                Icon(
-                                    Icons.Filled.Security,
-                                    tint = when (uiState.kpmPatchOption) {
-                                        KpmPatchOption.PATCH_KPM -> MaterialTheme.colorScheme.primary
-                                        KpmPatchOption.UNDO_PATCH_KPM -> MaterialTheme.colorScheme.secondary
-                                        KpmPatchOption.FOLLOW_KERNEL -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                    contentDescription = null
-                                )
-                            },
-                            headlineContent = {
-                                Text(
-                                    when (uiState.kpmPatchOption) {
-                                        KpmPatchOption.PATCH_KPM -> stringResource(R.string.kpm_patch_enabled)
-                                        KpmPatchOption.UNDO_PATCH_KPM -> stringResource(R.string.kpm_undo_patch_enabled)
-                                        KpmPatchOption.FOLLOW_KERNEL -> stringResource(R.string.kpm_follow_kernel_file)
-                                    }
-                                )
-                            },
-                            trailingContent = {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
-                            }
-                        )
-                    }
                 }
             }
             Button(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                enabled = uiState.installMethod != null && uiState.blockModulesValid,
+                enabled = uiState.canInstall,
                 onClick = actions.onNext
             ) { Text(stringResource(R.string.install_next)) }
         }

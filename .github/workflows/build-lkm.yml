@@ -17,6 +17,16 @@ on:
         required: false
         default: ''
         type: string
+      version_code:
+        description: 'Consistent KernelSU version code for all module builds'
+        required: false
+        default: ''
+        type: string
+      release_build:
+        description: 'Mark version metadata as a release build'
+        required: false
+        default: false
+        type: boolean
   workflow_dispatch:
 jobs:
   build-lkm:
@@ -37,3 +47,5 @@ jobs:
       package_name: ${{ inputs.package_name || '' }}
       expected_size: ${{ inputs.expected_size || '' }}
       expected_hash: ${{ inputs.expected_hash || '' }}
+      version_code: ${{ inputs.version_code || '' }}
+      release_build: ${{ inputs.release_build }}

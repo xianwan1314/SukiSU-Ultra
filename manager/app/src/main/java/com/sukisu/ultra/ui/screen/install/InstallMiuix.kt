@@ -1,5 +1,7 @@
 package com.sukisu.ultra.ui.screen.install
 
+import com.sukisu.ultra.ui.kernelFlash.KpmPatchOption
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -32,7 +34,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircleOutline
 import androidx.compose.material.icons.filled.SdStorage
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -54,9 +55,6 @@ import androidx.compose.ui.unit.sp
 import com.sukisu.ultra.R
 import com.sukisu.ultra.getKernelVersion
 import com.sukisu.ultra.ui.component.dialog.rememberConfirmDialog
-import com.sukisu.ultra.ui.kernelFlash.KpmPatchOption
-import com.sukisu.ultra.ui.kernelFlash.KpmPatchSelectionDialog
-import com.sukisu.ultra.ui.kernelFlash.component.SlotSelectionDialog
 import com.sukisu.ultra.ui.theme.LocalEnableBlur
 import com.sukisu.ultra.ui.util.BlurredBar
 import com.sukisu.ultra.ui.util.LkmSelection
@@ -115,29 +113,6 @@ internal fun InstallScreenMiuix(
     }
     val isGkiDevice by produceState(initialValue = false) {
         value = getKernelVersion().isGKI()
-    }
-
-    // 槽位选择对话框
-    if (uiState.showSlotSelectionDialog && isAbDevice) {
-        SlotSelectionDialog(
-            show = true,
-            onDismiss = { uiState.anyKernel3State?.onDismissSlotDialog() },
-            onSlotSelected = { slot ->
-                uiState.anyKernel3State?.onSlotSelected(slot)
-            }
-        )
-    }
-
-    // KPM补丁选择对话框
-    if (uiState.showKpmPatchDialog) {
-        KpmPatchSelectionDialog(
-            show = true,
-            currentOption = uiState.kpmPatchOption,
-            onDismiss = { uiState.anyKernel3State?.onDismissPatchDialog() },
-            onOptionSelected = { option ->
-                uiState.anyKernel3State?.onOptionSelected(option)
-            }
-        )
     }
 
     Scaffold(
@@ -295,6 +270,57 @@ internal fun InstallScreenMiuix(
                         }
                     }
 
+                    if (uiState.canPatchKpm) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                        ) {
+                            OverlayDropdownPreference(
+                                title = stringResource(R.string.install_kpm_operation),
+                                summary = stringResource(R.string.install_kpm_summary),
+                                items = listOf(stringResource(R.string.kpm_follow_kernel_file), stringResource(R.string.enable_kpm_patch), stringResource(R.string.enable_kpm_undo_patch)),
+                                selectedIndex = KpmPatchOption.entries.indexOf(uiState.kpmPatchOption),
+                                onSelectedIndexChange = { actions.onKpmOptionChange(KpmPatchOption.entries[it]) },
+                            )
+                            AnimatedVisibility(visible = uiState.canSelectKpmBoot) {
+                                Column {
+                                    BasicComponent(
+                                        title = stringResource(R.string.install_kpm_manual),
+                                        summary = uiState.kpmBootUri?.lastPathSegment
+                                            ?: stringResource(
+                                                if (uiState.installMethod == null) R.string.install_kpm_auto_current_boot
+                                                else R.string.install_kpm_auto
+                                            ),
+                                        onClick = actions.onToggleKpmBoot,
+                                        endActions = {
+                                            Icon(
+                                                if (uiState.kpmBootExpanded) MiuixIcons.ExpandLess else MiuixIcons.ExpandMore,
+                                                contentDescription = stringResource(R.string.expand),
+                                                modifier = Modifier.size(16.dp),
+                                            )
+                                        },
+                                    )
+                                    AnimatedVisibility(visible = uiState.kpmBootExpanded) {
+                                        Column {
+                                            BasicComponent(
+                                                title = stringResource(R.string.select_file),
+                                                summary = uiState.kpmBootUri?.lastPathSegment,
+                                                onClick = actions.onPatchKpmFile,
+                                            )
+                                            if (uiState.kpmBootUri != null) {
+                                                BasicComponent(
+                                                    title = stringResource(R.string.install_kpm_clear),
+                                                    onClick = actions.onClearKpmBoot,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -430,36 +456,6 @@ internal fun InstallScreenMiuix(
                                 )
                             }
                         }
-
-                        // KPM 状态显示
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp),
-                        ) {
-                            ArrowPreference(
-                                title = when (uiState.kpmPatchOption) {
-                                    KpmPatchOption.PATCH_KPM -> stringResource(R.string.kpm_patch_enabled)
-                                    KpmPatchOption.UNDO_PATCH_KPM -> stringResource(R.string.kpm_undo_patch_enabled)
-                                    KpmPatchOption.FOLLOW_KERNEL -> stringResource(R.string.kpm_follow_kernel_file)
-                                },
-                                onClick = {
-                                    actions.onReopenKpmDialog(method)
-                                },
-                                startAction = {
-                                    Icon(
-                                        Icons.Filled.Security,
-                                        tint = when (uiState.kpmPatchOption) {
-                                            KpmPatchOption.PATCH_KPM -> colorScheme.primary
-                                            KpmPatchOption.UNDO_PATCH_KPM -> colorScheme.secondary
-                                            KpmPatchOption.FOLLOW_KERNEL -> colorScheme.onSurfaceVariantSummary
-                                        },
-                                        modifier = Modifier.padding(end = 16.dp),
-                                        contentDescription = null
-                                    )
-                                }
-                            )
-                        }
                     }
                     
                     TextButton(
@@ -467,7 +463,7 @@ internal fun InstallScreenMiuix(
                                 .fillMaxWidth()
                                 .padding(top = 12.dp),
                             text = stringResource(id = R.string.install_next),
-                            enabled = uiState.installMethod != null && uiState.blockModulesValid,
+                            enabled = uiState.canInstall,
                             colors = ButtonDefaults.textButtonColorsPrimary(),
                             onClick = actions.onNext
                         )

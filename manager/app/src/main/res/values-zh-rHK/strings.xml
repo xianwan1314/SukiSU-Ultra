@@ -57,6 +57,9 @@
     <string name="reboot_download">重啟至 Download</string>
     <string name="reboot_edl">重啟至 EDL</string>
     <string name="about">關於</string>
+    <string name="about_contributors">主要貢獻者</string>
+    <string name="about_contributors_hint">拖曳瀏覽，雙指縮放，點擊頭像開啟個人頁面。</string>
+    <string name="about_wordmark_hint">每個字元都來自貢獻者的名字，雙指放大查看。</string>
     <string name="module_uninstall_confirm">是否解除安裝 %s 模組？</string>
     <string name="metamodule_uninstall_confirm">是否解除安裝 %s 模組？這將影響所有模組，且 meta 模組提供的功能（如掛載）將失效</string>
     <string name="module_uninstall_success">已解除安裝 %s</string>
@@ -77,8 +80,7 @@
     <string name="home_learn_kernelsu_url">https://sukisu.org/zh/guide/</string>
     <string name="home_click_to_learn_kernelsu">了解如何安裝 SukiSU 及使用模組</string>
     <string name="home_support_title">支持開發</string>
-    <string name="home_support_content">KernelSU 承諾永久免費且開源，歡迎捐款支持</string>
-    <string name="home_gki_warning">由 v3.0.0 起 GKI 模式僅限測試環境使用，不建議日常長期使用且不再提供鏡像檔</string>
+    <string name="home_support_content">SukiSU 承諾永久免費且開源，歡迎捐款支持</string>
     <string name="about_source_code"><![CDATA[在 %1$s 中檢視原始碼<br/>加入我們的 %2$s 頻道]]></string>
     <string name="profile_default">預設</string>
     <string name="profile_template">模板</string>
@@ -144,6 +146,10 @@
     <string name="settings_pager_gesture_cross_axis">跨軸攔截</string>
     <string name="settings_pager_gesture_ios_like">iOS 風格</string>
     <string name="settings_module_check_update">檢查模組更新</string>
+    <string name="settings_auto_delete_module_zip">安裝後刪除模組壓縮檔</string>
+    <string name="settings_auto_delete_module_zip_summary">安裝成功後自動刪除模組壓縮檔，包含手動選擇、模組更新及從倉庫下載的</string>
+    <string name="module_zip_deleted">已刪除模組壓縮檔：%1$s</string>
+    <string name="module_zip_delete_failed">! 刪除模組壓縮檔失敗：%1$s</string>
     <string name="grant_root_failed">授予 Root 權限失敗！</string>
     <string name="home_pr_build_warning">此為 PR 除錯版本，切勿於正式環境使用！</string>
     <string name="home_pr_kernel_warning">此核心具 PR 簽名支援，並非正式版本核心！</string>
@@ -288,7 +294,7 @@
     <string name="download_install">安裝</string>
     <string name="settings_adb_root_summary">以 Root 權限執行 adbd daemon</string>
     <string name="settings_shell_su_adb_only">限制 Shell 僅可透過 ADB 取得 Root</string>
-    <string name="settings_shell_su_adb_only_summary">授權 Shell 後的額外檢查：僅由 adbd 或 KernelSU Root 程序（如 ADB 模組）啟動的 shell 程序可取得 Root，防止 App 提權至 shell 後進一步取得 Root</string>
+    <string name="settings_shell_su_adb_only_summary">授權 Shell 後的額外檢查：僅由 adbd 或 SukiSU Root 程序（如 ADB 模組）啟動的 shell 程序可取得 Root，防止 App 提權至 shell 後進一步取得 Root</string>
     <string name="menu_sort">排序</string>
     <string name="sort_by_name">應用名</string>
     <string name="sort_by_package_name">套件名</string>
@@ -300,4 +306,8 @@
     <string name="module_shortcut_scheme_copied">已複製 URL scheme</string>
     <string name="settings_navigation_badge">底部欄標記</string>
     <string name="settings_navigation_badge_summary">在底部欄顯示已授權 App 及已啟用模組數量</string>
+    <string name="settings_check_ci_update">檢查 CI 版本更新</string>
+    <string name="settings_check_ci_update_summary">在主頁檢查 main 分支的 CI 構建，有新版本時提示更新</string>
+    <string name="settings_hide_home_warnings">隱藏首頁警告</string>
+    <string name="settings_hide_home_warnings_summary">隱藏首頁的警告卡片（PR 建置、核心/管理器更新、LKM 更新、預覽模式）</string>
 </resources>

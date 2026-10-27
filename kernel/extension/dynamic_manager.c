@@ -21,7 +21,7 @@
 
 #include "klog.h" // IWYU pragma: keep
 #include "ksu.h"
-#include "extension/dynamic_manager.h"
+#include "dynamic_manager.h"
 #include "manager/manager_identity.h"
 #include "manager/apk_sign.h"
 #include "manager/throne_tracker.h"

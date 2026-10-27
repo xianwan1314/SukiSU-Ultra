@@ -21,7 +21,7 @@
 #include <linux/uaccess.h>
 #include <linux/version.h>
 
-#include "uapi/supercall.h"
+#include "cpu_spoof.h"
 #include "infra/symbol_resolver.h"
 #include "klog.h" // IWYU pragma: keep
 

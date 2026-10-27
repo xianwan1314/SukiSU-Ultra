@@ -10,12 +10,6 @@ import android.os.SystemClock
 import android.provider.OpenableColumns
 import android.system.Os
 import android.util.Log
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import com.topjohnwu.superuser.CallbackList
 import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.ShellUtils
@@ -33,6 +27,7 @@ import com.sukisu.ultra.data.registry.DownloadVerificationException
 import com.sukisu.ultra.data.registry.RegistryDownloadStore
 import com.sukisu.ultra.data.registry.copyForInstall
 import com.sukisu.ultra.ksuApp
+import com.sukisu.ultra.ui.screen.susfs.util.SuSFSConfig
 import okhttp3.OkHttpClient
 import org.json.JSONArray
 import java.io.File
@@ -52,7 +47,7 @@ fun getKsuDaemonPath(): String {
     return ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
 }
 
-data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {
+data class FlashResult(val code: Int, val err: String, val showReboot: Boolean, val outputFile: File? = null) {
     constructor(result: Shell.Result, showReboot: Boolean) : this(result.code, result.err.joinToString("\n"), showReboot)
     constructor(result: Shell.Result) : this(result, result.isSuccess)
 }
@@ -330,7 +325,8 @@ private fun flashWithIO(
 fun flashModule(
     uri: Uri,
     onStdout: (String) -> Unit,
-    onStderr: (String) -> Unit
+    onStderr: (String) -> Unit,
+    deleteSourceOnSuccess: Boolean = false,
 ): FlashResult {
     // Registry downloads live in app-private storage and carry their expected size + SHA-256;
     // the exact copy handed to ksud is re-hashed right before installing.
@@ -358,6 +354,18 @@ fun flashModule(
         val cmd = "module install ${file.absolutePath}"
         val result = flashWithIO("${getKsuDaemonPath()} $cmd", onStdout, onStderr)
         Log.i("KernelSU", "install module $uri result: $result")
+        if (shouldDeleteSourceAfterInstall(deleteSourceOnSuccess, result.isSuccess)) {
+            val name = runCatching { uri.getFileName(ksuApp) }.getOrNull()
+                ?: uri.lastPathSegment?.substringAfterLast('/').orEmpty()
+            val deleted = deleteInstalledModuleZip(uri)
+            // The flash screen only renders stdout, so report both outcomes there.
+            onStdout(
+                ksuApp.getString(
+                    if (deleted) R.string.module_zip_deleted else R.string.module_zip_delete_failed,
+                    name,
+                )
+            )
+        }
         return FlashResult(result, result.isSuccess && moduleNeedsReboot(file))
     } finally {
         file.delete()
@@ -526,7 +534,15 @@ fun installBoot(
     spoofVersion: String,
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit,
+    kpmEnabled: Boolean = false,
+    kpmUndo: Boolean = false,
+    kpmBoot: Uri? = null,
+    outputDir: File? = null,
 ): FlashResult {
+    if (kpmEnabled) return installBootWithKpm(
+        bootUri, lkm, ota, partition, bootImageKind, allowShell, enableAdb, forceBackup,
+        blockModules, spoofRelease, spoofVersion, kpmBoot, onStdout, onStderr, kpmUndo,
+    )
     val resolver = ksuApp.contentResolver
 
     val bootFile = bootUri?.let { uri ->
@@ -578,14 +594,19 @@ fun installBoot(
     if (bootFile != null) {
         val downloadsDir =
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val outputKind = resolveBootImageKindForOutput(bootImageKind, partition)
-        val outputName = if (outputKind == null) {
-            "kernelsu_patched_${System.currentTimeMillis()}.img"
+        val destination = outputDir ?: downloadsDir
+        cmd += " -o ${destination.absolutePath.shellArg()}"
+        if (outputDir != null) {
+            cmd += " --out-name lkm-patched.img"
         } else {
-            "kernelsu_patched_${outputKind}_${System.currentTimeMillis()}.img"
+            val outputKind = resolveBootImageKindForOutput(bootImageKind, partition)
+            val outputName = if (outputKind == null) {
+                "kernelsu_patched_${System.currentTimeMillis()}.img"
+            } else {
+                "kernelsu_patched_${outputKind}_${System.currentTimeMillis()}.img"
+            }
+            cmd += " --out-name $outputName"
         }
-        cmd += " -o $downloadsDir"
-        cmd += " --out-name $outputName"
     }
 
     partition?.let { part ->
@@ -611,7 +632,84 @@ fun installBoot(
     if (bootUri == null && result.isSuccess && !useVendorBootRmvr) {
         install()
     }
-    return FlashResult(result, showReboot)
+    return FlashResult(result.code, result.err.joinToString("\n"), showReboot,
+        outputDir?.let { File(it, "lkm-patched.img") }?.takeIf { result.isSuccess })
+}
+
+private fun installBootWithKpm(
+    bootUri: Uri?, lkm: LkmSelection, ota: Boolean, partition: String?, bootImageKind: String?,
+    allowShell: Boolean, enableAdb: Boolean, forceBackup: Boolean, blockModules: String,
+    spoofRelease: String, spoofVersion: String, kpmBoot: Uri?,
+    onStdout: (String) -> Unit, onStderr: (String) -> Unit,
+    kpmUndo: Boolean,
+): FlashResult {
+    fun failIfNeeded(result: FlashResult): Boolean {
+        if (result.code != 0) onStderr(result.err)
+        return result.code != 0
+    }
+    if (bootUri == null) {
+        if (ota) return FlashResult(1, "Combined KPM installation to the inactive slot is not supported yet; no changes made", false)
+    }
+    // Validate the actual KPM input before LKM can modify the device.
+    val kpmImage = kpmBoot ?: bootUri
+    if (kpmImage != null) {
+        try {
+            val header = ByteArray(64)
+            val input = ksuApp.contentResolver.openInputStream(kpmImage)
+                ?: error("Cannot open the selected boot.img")
+            input.use { java.io.DataInputStream(it).readFully(header) }
+            check(String(header, 0, 8, Charsets.US_ASCII) == "ANDROID!" &&
+                ByteBuffer.wrap(header).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(8) > 0) {
+                "Selected image has no boot kernel. Select the matching boot.img for KPM."
+            }
+        } catch (e: Exception) {
+            return FlashResult(1, e.message ?: "Cannot read selected boot.img", false)
+        }
+    }
+    if (bootUri == null) {
+        val lkmResult = installBoot(null, lkm, false, partition, bootImageKind, allowShell, enableAdb, forceBackup,
+            blockModules, spoofRelease, spoofVersion, onStdout, onStderr, kpmEnabled = false)
+        if (failIfNeeded(lkmResult)) return lkmResult
+        onStdout("- LKM installation completed. Starting additional KPM operation.")
+        if (kpmBoot != null) onStdout("- Manual boot selected: KPM output will be exported, not flashed to the device.")
+        val result = patchKpmBoot(kpmBoot, onStdout, onStderr, undo = kpmUndo)
+        return result.copy(
+            showReboot = result.code == 0 && (lkmResult.showReboot || result.showReboot)
+        )
+    }
+    val work = File.createTempFile("lkm-kpm-", ".dir", ksuApp.cacheDir)
+    check(work.delete() && work.mkdirs()) { "Cannot create combined patch directory" }
+    return try {
+        val lkmResult = installBoot(bootUri, lkm, ota, partition, bootImageKind, allowShell, enableAdb, forceBackup,
+            blockModules, spoofRelease, spoofVersion, onStdout, onStderr,
+            kpmEnabled = false, outputDir = work)
+        if (failIfNeeded(lkmResult)) return lkmResult
+        val lkmOutput = lkmResult.outputFile ?: File(work, "lkm-patched.img")
+        check(lkmOutput.isFile) { "LKM patched image was not produced" }
+        check(flashWithIO("chmod 644 ${SuSFSConfig.shellQuote(lkmOutput.absolutePath)}", onStdout, onStderr).isSuccess) {
+            "Cannot read LKM output"
+        }
+        val kpmInput = kpmBoot ?: Uri.fromFile(lkmOutput)
+        val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        check(downloads.exists() || downloads.mkdirs()) { "Cannot create Downloads directory" }
+        val finalOutput = File(downloads, "SukiSU_KPM_boot_${System.currentTimeMillis()}.img")
+        val result = patchKpmBoot(kpmInput, onStdout, onStderr, finalOutput, undo = kpmUndo)
+        if (kpmBoot != null || result.code != 0) {
+            // A separate init_boot/vendor_boot artifact must not disappear
+            // when the temporary directory is cleaned up.
+            val savedLkm = File(downloads, "SukiSU_LKM_${System.currentTimeMillis()}.img")
+            check(flashWithIO("chmod 644 ${SuSFSConfig.shellQuote(lkmOutput.absolutePath)}", onStdout, onStderr).isSuccess) { "Cannot export LKM output" }
+            lkmOutput.copyTo(savedLkm)
+            onStdout("- LKM output: ${savedLkm.absolutePath}")
+        }
+        result
+    } catch (e: Exception) {
+        val message = e.message ?: "Combined LKM/KPM operation failed"
+        onStderr(message)
+        FlashResult(1, message, false)
+    } finally {
+        removeAsRoot(work.absolutePath)
+    }
 }
 
 fun downloadBoot(
@@ -626,10 +724,13 @@ fun downloadBoot(
     spoofVersion: String,
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit,
+    kpmEnabled: Boolean = false,
+    kpmUndo: Boolean = false,
+    kpmBoot: Uri? = null,
 ): FlashResult {
     val bootFile = File(ksuApp.cacheDir, "download-boot.img")
     val useVendorBootRmvr = isVendorBootTarget(null, partition)
-    var probedKmi: String? = null
+    var probedKmi: String?
     try {
         onStdout("- Downloading and extracting boot image")
         val channel = DataSourceChannel(newDownloadClient(), url)
@@ -638,7 +739,7 @@ fun downloadBoot(
         // Extract the KMI here while the payload is open. ZipFile closes the
         // channel it is built on, so probe on a separate channel.
         val probeChannel = DataSourceChannel(newDownloadClient(), url)
-        probedKmi = try {
+        probedKmi = probeChannel.use { probeChannel ->
             if (magic == "CrAU") {
                 ExtractImage.probePayload(
                     probeChannel,
@@ -652,8 +753,6 @@ fun downloadBoot(
                     onProgress = onStdout,
                 ).kmi
             }
-        } finally {
-            probeChannel.close()
         }
         if (magic == "CrAU") {
             image.consumePayload(channel, partition)
@@ -681,6 +780,33 @@ fun downloadBoot(
         return FlashResult(-1, "Failed to determine KMI from the package", false)
     }
 
+    if (kpmEnabled) {
+        try {
+            var selectedBoot = kpmBoot
+            var downloadedKernelBoot: File? = null
+            if (selectedBoot == null && partition != "boot") {
+                downloadedKernelBoot = File.createTempFile("kpm-remote-boot-", ".img", ksuApp.cacheDir)
+                val kernelChannel = DataSourceChannel(newDownloadClient(), url)
+                val extractor = ExtractImage(downloadedKernelBoot, onStdout)
+                if (readMagic(kernelChannel) == "CrAU") extractor.consumePayload(kernelChannel, "boot")
+                else extractor.consume(kernelChannel, "boot")
+                selectedBoot = Uri.fromFile(downloadedKernelBoot)
+            }
+            try {
+                val resolvedLkm = autoKmi?.let { LkmSelection.KmiString(it) } ?: lkm
+                return installBootWithKpm(Uri.fromFile(bootFile), resolvedLkm, false, partition, partition,
+                    allowShell, enableAdb, forceBackup, blockModules, spoofRelease, spoofVersion,
+                    selectedBoot, onStdout, onStderr, kpmUndo)
+            } finally {
+                downloadedKernelBoot?.delete()
+            }
+        } catch (e: Exception) {
+            return FlashResult(1, e.message ?: "Cannot prepare remote boot for KPM", false)
+        } finally {
+            bootFile.delete()
+        }
+    }
+
     val patchCommand = if (useVendorBootRmvr) VENDOR_BOOT_RMVR_COMMAND else BOOT_PATCH_COMMAND
     var cmd = "${getKsuDaemonPath()} $patchCommand -b ${bootFile.absolutePath}"
     var lkmFile: File? = null
@@ -701,7 +827,7 @@ fun downloadBoot(
     // ksud defaults to cwd, which is read-only in the su session; use Downloads.
     val downloadsDir =
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-    cmd += " -o $downloadsDir"
+    cmd += " -o ${downloadsDir.absolutePath.shellArg()}"
     val outputKind = resolveBootImageKindForOutput(null, partition)
     if (outputKind != null) {
         cmd += " --out-name kernelsu_patched_${outputKind}_${System.currentTimeMillis()}.img"
@@ -760,7 +886,7 @@ private fun String.shellArg(): String = "'${replace("'", "'\\''")}'"
 
 fun reboot(reason: String = "") {
     if (reason == "soft_reboot") {
-        execKsud("soft-reboot", true, true)
+        execKsud("soft-reboot", true, globalMnt = true)
         return
     }
     val shell = getRootShell()
@@ -945,15 +1071,19 @@ fun restartApp(packageName: String, userId: Int? = null) {
 }
 
 // KPM控制
+// KPM module names may contain spaces ("ABC EFG"): always pass names, paths and
+// args through shellQuote, otherwise the shell splits them into multiple argv and
+// ksud (clap) only takes the first token, so info/unload/control hit the wrong
+// module or fail.
 fun loadKpmModule(path: String, args: String? = null): Boolean {
     val shell = getRootShell()
-    val cmd = "${getKsuDaemonPath()} kpm load $path ${args ?: ""}"
+    val cmd = "${getKsuDaemonPath()} kpm load ${SuSFSConfig.shellQuote(path)} ${SuSFSConfig.shellQuote(args ?: "")}"
     return ShellUtils.fastCmdResult(shell, cmd)
 }
 
 fun unloadKpmModule(name: String): Boolean {
     val shell = getRootShell()
-    val cmd = "${getKsuDaemonPath()} kpm unload $name"
+    val cmd = "${getKsuDaemonPath()} kpm unload ${SuSFSConfig.shellQuote(name)}"
     return ShellUtils.fastCmdResult(shell, cmd)
 }
 
@@ -993,19 +1123,24 @@ suspend fun streamFile(path: String): List<String> = withContext(Dispatchers.IO)
 }
 
 fun listKpmModules(): String {
-    val shell = getRootShell()
-    val cmd = "${getKsuDaemonPath()} kpm list"
-    return try {
-        runCmd(shell, cmd).trim()
-    } catch (e: Exception) {
-        Log.e(TAG, "Failed to list KPM modules", e)
-        ""
+    return listKpmModules(getRootShell().newJob().add("${getKsuDaemonPath()} kpm list"))
+}
+
+internal fun listKpmModules(job: Shell.Job): String {
+    val result = job.to(ArrayList(), ArrayList()).exec()
+    check(result.isSuccess) {
+        result.err.joinToString("\n").ifBlank { "KPM list failed (${result.code})" }
     }
+    // ksud can report a kernel error on stdout while exiting successfully.
+    check(result.out.none { it.trimStart().startsWith("Failed to get kpm list:") }) {
+        result.out.joinToString("\n")
+    }
+    return result.out.joinToString("\n").trim()
 }
 
 fun getKpmModuleInfo(name: String): String {
     val shell = getRootShell()
-    val cmd = "${getKsuDaemonPath()} kpm info $name"
+    val cmd = "${getKsuDaemonPath()} kpm info ${SuSFSConfig.shellQuote(name)}"
     return try {
         runCmd(shell, cmd).trim()
     } catch (e: Exception) {
@@ -1016,7 +1151,7 @@ fun getKpmModuleInfo(name: String): String {
 
 fun controlKpmModule(name: String, args: String? = null): Int {
     val shell = getRootShell()
-    val cmd = """${getKsuDaemonPath()} kpm control $name "${args ?: ""}""""
+    val cmd = "${getKsuDaemonPath()} kpm control ${SuSFSConfig.shellQuote(name)} ${SuSFSConfig.shellQuote(args ?: "")}"
     val result = runCmd(shell, cmd)
     return result.trim().toIntOrNull() ?: -1
 }
@@ -1037,6 +1172,16 @@ fun getSuSFSVersion(): String {
     val shell = getRootShell()
     val result = ShellUtils.fastCmd(shell, "${getKsuDaemonPath()} susfs version")
     return result
+}
+
+fun getSuSFSVariant(): String {
+    val shell = getRootShell()
+    return ShellUtils.fastCmd(shell, "${getKsuDaemonPath()} susfs variant").trim()
+}
+
+fun getSuSFSImplementation(): String {
+    val shell = getRootShell()
+    return ShellUtils.fastCmd(shell, "${getKsuDaemonPath()} susfs implementation").trim()
 }
 
 fun getSuSFSFeatures(): String {
@@ -1127,20 +1272,6 @@ fun applyUmountConfigToKernel(): Boolean {
     val result = ShellUtils.fastCmdResult(shell, cmd)
     Log.i(TAG, "apply umount config to kernel result: $result")
     return result
-}
-
-// 检查 KPM 版本是否可用
-@Composable
-fun rememberKpmAvailable(): Boolean {
-    var cachedVersion by rememberSaveable { mutableStateOf("") }
-    val kpmVersion by produceState(initialValue = cachedVersion) {
-        val result = withContext(Dispatchers.IO) {
-            runCatching { getKpmVersion() }.getOrElse { "" }
-        }
-        cachedVersion = result
-        value = result
-    }
-    return kpmVersion.isNotEmpty() && !kpmVersion.contains("Error", ignoreCase = true)
 }
 
 data class BootConfig(

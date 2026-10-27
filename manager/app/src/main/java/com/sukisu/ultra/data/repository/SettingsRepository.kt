@@ -4,7 +4,9 @@ interface SettingsRepository {
     var uiMode: String
     var appLanguage: String
     var checkUpdate: Boolean
+    var checkCiUpdate: Boolean
     var checkModuleUpdate: Boolean
+    var autoDeleteModuleZip: Boolean
     var alternativeIcon : Boolean
     var themeMode: Int
     var miuixMonet: Boolean
@@ -24,6 +26,12 @@ interface SettingsRepository {
     var enableWebDebugging: Boolean
     var moduleSortEnabledFirst: Boolean
     var moduleSortActionFirst: Boolean
+    var moduleSortWebUiFirst: Boolean
+    var moduleSortZygiskFirst: Boolean
+    var moduleSortMetamoduleFirst: Boolean
+    var moduleSortNameOrder: String
+    var moduleSortManual: Boolean
+    var moduleManualOrder: String
     /** Name of the [com.sukisu.ultra.ui.screen.modulerepo.RepoSort] entry. */
     var moduleRepoSortOrder: String
     var superuserShowSystemApps: Boolean
@@ -31,6 +39,7 @@ interface SettingsRepository {
     var superuserSortOption: Int
     var suLogFilters: Set<String>?
     var showFullStatus: Boolean
+    var hideHomeWarnings: Boolean
     var autoJailbreak: Boolean
     var useSoftReboot: Boolean
     val intentToken: String
@@ -49,6 +58,10 @@ interface SettingsRepository {
     suspend fun getSelinuxHideStatus(): String
     fun isSelinuxHideEnabled(): Boolean
     fun setSelinuxHideEnabled(enabled: Boolean): Int
+
+    suspend fun getAvcSpoofStatus(): String
+    fun isAvcSpoofEnabled(): Boolean
+    fun setAvcSpoofEnabled(enabled: Boolean): Boolean
 
     suspend fun getMountHideStatus(): String
     fun isMountHideEnabled(): Boolean

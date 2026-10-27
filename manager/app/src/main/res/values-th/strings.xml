@@ -45,7 +45,7 @@
     <string name="home_learn_kernelsu_url">https://sukisu.org/guide/</string>
     <string name="home_click_to_learn_kernelsu">เรียนรู้วิธีการติดตั้ง SukiSU และวิธีใช้งานโมดูลต่าง ๆ</string>
     <string name="home_support_title">สนับสนุนพวกเรา</string>
-    <string name="home_support_content">KernelSU จะเป็นโอเพ่นซอร์สฟรีเสมอ อย่างไรก็ตาม คุณสามารถแสดงความห่วงใยได้ด้วยการบริจาค</string>
+    <string name="home_support_content">SukiSU จะเป็นโอเพ่นซอร์สฟรีเสมอ อย่างไรก็ตาม คุณสามารถแสดงความห่วงใยได้ด้วยการบริจาค</string>
     <string name="about_source_code"><![CDATA[ดูซอร์สโค้ดได้ที่ %1$s<br/>เข้าร่วม %2$s channel]]></string>
     <string name="profile_custom">กำหนดเอง</string>
     <string name="profile_default">ค่าเริ่มต้น</string>
@@ -211,4 +211,6 @@
     <string name="profile_flags_desc_no_new_privs">ป้องกันการยกระดับสิทธิ์เพิ่มเติมผ่าน SukiSU ภายในบริบทของโปรไฟล์รูทนี้</string>
     <string name="install_force_backup">สำรองเป็นอิมเมจเดิม</string>
     <string name="install_force_backup_summary">โปรดตรวจสอบให้แน่ใจว่า boot image ที่คุณเลือกเป็นอิมเมจเดิม</string>
+    <string name="settings_check_ci_update">ตรวจสอบการอัปเดต CI</string>
+    <string name="settings_check_ci_update_summary">ตรวจสอบบิลด์ CI ของสาขา main ในหน้าแรกและแจ้งเตือนเมื่อมีการอัปเดต</string>
 </resources>

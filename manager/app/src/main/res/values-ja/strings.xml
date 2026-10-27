@@ -45,7 +45,7 @@
     <string name="home_learn_kernelsu_url">https://sukisu.org/guide/</string>
     <string name="home_click_to_learn_kernelsu">SukiSU のインストール方法やモジュールの使い方はこちら</string>
     <string name="home_support_title">支援する</string>
-    <string name="home_support_content">KernelSU はこれからもずっと無料でオープンソースです。寄付をして頂くことで、開発を支援していただけます。</string>
+    <string name="home_support_content">SukiSU はこれからもずっと無料でオープンソースです。寄付をして頂くことで、開発を支援していただけます。</string>
     <string name="about_source_code"><![CDATA[%1$s でソースコードを表示<br/>%2$s チャンネルに参加]]></string>
     <string name="profile">アプリのプロファイル</string>
     <string name="profile_default">既定</string>
@@ -152,7 +152,6 @@
     <string name="module_repos_sort_name">名前（A→Z）</string>
     <string name="module_repos_source_code">ソースコード</string>
     <string name="metamodule_uninstall_confirm">モジュール %s をアンインストールしてもよろしいですか? この操作はすべてのモジュールに影響し、メタモジュールによって提供される特定の機能 (マウントなど) は動作しなくなります。</string>
-    <string name="home_gki_warning">バージョン 3.0.0 以降、GKI ワークモードはテスト環境でのみ使用されます。日常的な使用には推奨されません。また、イメージファイルの提供も停止されます。</string>
     <string name="app_profile_affects_following_apps">以下のアプリに影響します</string>
     <string name="install_select_partition">パーティションを選択</string>
     <string name="feature_status_unsupported_summary">カーネルはこの機能をサポートしていません</string>
@@ -211,4 +210,6 @@
     <string name="profile_flags_desc_no_new_privs">この root プロファイルのコンテキスト内で、SukiSU を介したさらなる権限昇格を防止します。</string>
     <string name="install_force_backup">純正イメージとしてバックアップ</string>
     <string name="install_force_backup_summary">選択した boot イメージが純正イメージであることを確認してください</string>
+    <string name="settings_check_ci_update">CI バージョンの更新を確認する</string>
+    <string name="settings_check_ci_update_summary">ホーム画面で main ブランチの CI ビルドを確認し、新しいバージョンがある場合に通知します。</string>
 </resources>

@@ -4,7 +4,7 @@
 
 #include <linux/types.h>
 
-#include "uapi/supercall.h"
+#include "uapi/extension.h"
 
 int ksu_extension_cpu_spoof_io(u32 id, void __user *raw);
 

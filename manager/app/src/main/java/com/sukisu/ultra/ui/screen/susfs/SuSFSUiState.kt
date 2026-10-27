@@ -9,7 +9,10 @@ import com.sukisu.ultra.ui.screen.susfs.util.SlotInfo
 
 @Immutable
 data class SuSFSUiState(
+    val operationResults: List<com.sukisu.ultra.ui.component.ConfigResult> = emptyList(),
+    val priorityUidFilterResults: List<com.sukisu.ultra.ui.component.ConfigResult> = emptyList(),
     val isLoading: Boolean = false,
+    val runtimeInfo: SuSFSRuntimeInfo? = null,
     val isNavigatingBack: Boolean = false,
 
     val selectedTab: SuSFSTab = SuSFSTab.BASIC_SETTINGS,
@@ -21,6 +24,7 @@ data class SuSFSUiState(
     val canEnableAutoStart: Boolean = false,
     val executeInPostFsData: Boolean = false,
     val enableHideBl: Boolean = false,
+    val enableLog: Boolean = false,
     val enableCleanupResidue: Boolean = false,
     val enableAvcLogSpoofing: Boolean = false,
     val hideSusMountsForAllProcs: Boolean = false,
@@ -31,12 +35,17 @@ data class SuSFSUiState(
     val slotInfoList: List<SlotInfo> = emptyList(),
     val currentActiveSlot: String = "",
     val isLoadingSlotInfo: Boolean = false,
+    val slotInfoError: String? = null,
     val showSlotInfoDialog: Boolean = false,
 
     // 路径配置
     val susPaths: Set<String> = emptySet(),
     val susLoopPaths: Set<String> = emptySet(),
     val susMaps: Set<String> = emptySet(),
+    val priorityUidFilter: Set<String> = emptySet(),
+    val priorityApps: List<AppInfo> = emptyList(),
+    val isLoadingPriorityApps: Boolean = false,
+    val showPriorityAppsDialog: Boolean = false,
 
     // Kstat 配置
     val kstatConfigs: Set<String> = emptySet(),
@@ -48,6 +57,7 @@ data class SuSFSUiState(
 
     // 应用列表（用于添加路径）
     val installedApps: List<AppInfo> = emptyList(),
+    val isLoadingApps: Boolean = false,
 
     // 对话框状态
     val showConfirmReset: Boolean = false,
@@ -75,10 +85,12 @@ data class SuSFSUiState(
 
 enum class SuSFSTab(val displayNameRes: Int) {
     BASIC_SETTINGS(R.string.susfs_tab_basic_settings),
+    FEATURE_TOGGLES(R.string.susfs_tab_feature_toggles),
     SUS_PATHS(R.string.susfs_tab_sus_paths),
     SUS_LOOP_PATHS(R.string.susfs_tab_sus_loop_paths),
     SUS_MAPS(R.string.susfs_tab_sus_maps),
     KSTAT_CONFIG(R.string.susfs_tab_kstat_config),
+    PRIORITY_UID_FILTER(R.string.susfs_priority_uid_filter),
     ENABLED_FEATURES(R.string.susfs_tab_enabled_features);
 
     companion object {
@@ -87,3 +99,9 @@ enum class SuSFSTab(val displayNameRes: Int) {
         }
     }
 }
+
+data class SuSFSRuntimeInfo(
+    val version: String?,
+    val variant: String?,
+    val implementation: String?,
+)

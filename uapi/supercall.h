@@ -154,6 +154,10 @@ struct ksu_add_try_umount_cmd {
     __u8 mode; /* denotes what to do with it 0:wipe_list 1:add_to_list 2:delete_entry */
 };
 
+static const __u8 KSU_UMOUNT_WIPE = 0; /* ignore everything and wipe list */
+static const __u8 KSU_UMOUNT_ADD = 1; /* add entry (path + flags) */
+static const __u8 KSU_UMOUNT_DEL = 2; /* delete entry, strcmp */
+
 struct ksu_get_sulog_fd_cmd {
     __u32 flags; /* Input: reserved for future use, must be 0 */
 };
@@ -174,28 +178,6 @@ struct ksu_lookup_symbols_cmd {
 
 static const __u32 KSU_LOOKUP_SYMBOLS_MAX = 1024;
 
-struct ksu_set_spoof_version_cmd {
-    __u8 release[65]; /* Input: e.g., "5.10.115-android12-9-g00000000" */
-    __u8 version[65]; /* Input: e.g., "#1 SMP PREEMPT Thu Jan 1 00:00:00 UTC 2026" */
-};
-
-struct ksu_set_spoof_cpu_cmd {
-    __u32 cpu_index;  /* Target processor core index */
-    __u32 midr;       /* Main ID Register payload */
-    __u32 bogomips;   /* BogoMIPS performance timing metric */
-    __u64 hwcap;      /* Main ELF Hardware Capabilities mask */
-    __u64 hwcap2;     /* Auxiliary ELF Hardware Capabilities mask */
-};
-
-// List current umount entries
-struct ksu_list_try_umount_cmd {
-    __aligned_u64 arg; // User buffer
-    __u32 buf_size; // Buffer size provided by userspace
-};
-
-static const __u8 KSU_UMOUNT_WIPE = 0; /* ignore everything and wipe list */
-static const __u8 KSU_UMOUNT_ADD = 1; /* add entry (path + flags) */
-static const __u8 KSU_UMOUNT_DEL = 2; /* delete entry, strcmp */
 
 // Other command structures
 struct ksu_get_full_version_cmd {
@@ -206,23 +188,9 @@ struct ksu_hook_type_cmd {
     char hook_type[32]; // Output: hook type string
 };
 
-struct ksu_enable_kpm_cmd {
-    __u8 enabled; // Output: true if KPM is enabled
-};
-
-static const __u32 SUKISU_KPM_LOAD = 1;
-static const __u32 SUKISU_KPM_UNLOAD = 2;
-static const __u32 SUKISU_KPM_NUM = 3;
-static const __u32 SUKISU_KPM_LIST = 4;
-static const __u32 SUKISU_KPM_INFO = 5;
-static const __u32 SUKISU_KPM_CONTROL = 6;
-static const __u32 SUKISU_KPM_VERSION = 7;
-
-struct ksu_kpm_cmd {
-    __aligned_u64 control_code;
-    __aligned_u64 arg1;
-    __aligned_u64 arg2;
-    __aligned_u64 result_code;
+struct ksu_set_spoof_version_cmd {
+    __u8 release[65]; /* Input: e.g., "5.10.115-android12-9-g00000000" */
+    __u8 version[65]; /* Input: e.g., "#1 SMP PREEMPT Thu Jan 1 00:00:00 UTC 2026" */
 };
 
 /* IOCTL command definitions */
@@ -257,17 +225,6 @@ static const __u32 KSU_IOCTL_LOOKUP_SYMBOLS = _IOW('K', 22, struct ksu_lookup_sy
 // Other IOCTL command definitions
 static const __u32 KSU_IOCTL_GET_FULL_VERSION = _IOC(_IOC_READ, 'K', 100, 0);
 static const __u32 KSU_IOCTL_HOOK_TYPE = _IOC(_IOC_READ, 'K', 101, 0);
-static const __u32 KSU_IOCTL_SET_SPOOF_VERSION = _IOC(_IOC_WRITE, 'K', 104, 0);
-static const __u32 KSU_IOCTL_MANAGER = _IOWR('K', 106, struct ksu_manager_cmd);
-
-/*
- * KSU_IOCTL_EXTENSION (300) replaces:
- *   KSU_IOCTL_KPM (200)
- *   KSU_IOCTL_LIST_TRY_UMOUNT (103)
- *   KSU_IOCTL_ADD_TRY_UMOUNT (18)
- *   KSU_IOCTL_SET_SPOOF_CPU (105)
- *   KSU_IOCTL_MANAGER (106) — dynamic manager is now an extension
- * See uapi/extension.h.
- */
+static const __u32 KSU_IOCTL_SET_SPOOF_VERSION = _IOC(_IOC_WRITE, 'K', 102, 0);
 
 #endif

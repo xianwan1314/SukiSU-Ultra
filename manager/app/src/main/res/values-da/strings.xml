@@ -64,7 +64,7 @@
     <string name="show_system_apps">Vis system-apps</string>
     <string name="module_magisk_conflict">Moduler er utilgængelige på grund af en konflikt med Magisk!</string>
     <string name="home_support_title">Støt Os</string>
-    <string name="home_support_content">KernelSU er, og vil altid være, gratis og åben kildekode. Du kan dog vise os, at du holder af os, ved at give en donation.</string>
+    <string name="home_support_content">SukiSU er, og vil altid være, gratis og åben kildekode. Du kan dog vise os, at du holder af os, ved at give en donation.</string>
     <string name="profile_custom">Brugerdefineret</string>
     <string name="profile_name">Profilnavn</string>
     <string name="profile_namespace_individual">Individuel</string>
@@ -150,4 +150,6 @@
     <string name="profile_flags_desc_no_new_privs">Forhindrer yderligere priviligeringseskalering via SukiSU inden for konteksten af denne root-profil.</string>
     <string name="install_force_backup">Sikkerhedskopiér som originalt image</string>
     <string name="install_force_backup_summary">Sørg for, at det valgte boot-image er det originale image</string>
+    <string name="settings_check_ci_update">Søg efter CI-opdateringer</string>
+    <string name="settings_check_ci_update_summary">Tjek main-grenens CI-builds på forsiden og giv besked, når en opdatering er tilgængelig.</string>
 </resources>

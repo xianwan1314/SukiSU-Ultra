@@ -47,7 +47,7 @@
     <string name="home_learn_kernelsu_url">https://sukisu.org/guide/</string>
     <string name="home_click_to_learn_kernelsu">Узнайте, как установить SukiSU и использовать модули.</string>
     <string name="home_support_title">Поддержите нас</string>
-    <string name="home_support_content">KernelSU был и всегда будет бесплатным и открытым проектом. Однако Вы всегда можете поддержать нас, отправив небольшое пожертвование.</string>
+    <string name="home_support_content">SukiSU был и всегда будет бесплатным и открытым проектом. Однако Вы всегда можете поддержать нас, отправив небольшое пожертвование.</string>
     <string name="about_source_code"><![CDATA[Посмотреть исходный код на %1$s<br/>Присоединяйтесь к нашему %2$s каналу]]></string>
     <string name="profile" translatable="false">App Profile</string>
     <!--Don't translate this string!-->
@@ -180,7 +180,6 @@
     <string name="module_repos">Репозиторий</string>
     <string name="module_repos_sort_name">Имя (А → Я)</string>
     <string name="module_repos_source_code">Исходный код</string>
-    <string name="home_gki_warning">Начиная с версии 3.0.0, режим работы GKI будет использоваться только в тестовых средах. Мы не рекомендуем его для ежедневного использования, а image файлы больше предоставляться не будут.</string>
     <string name="network_offline">Нет подключения к сети</string>
     <string name="network_retry">Повторить</string>
     <string name="tab_readme">README</string>
@@ -216,4 +215,6 @@
     <string name="profile_flags_desc_no_new_privs">Предотвращает дальнейшее повышение привилегий через SukiSU в контексте этого root-профиля.</string>
     <string name="install_force_backup">Сохранить резервную копию как оригинальный образ</string>
     <string name="install_force_backup_summary">Пожалуйста, убедитесь, что выбранный образ boot является оригинальным образом</string>
+    <string name="settings_check_ci_update">Проверять обновления CI</string>
+    <string name="settings_check_ci_update_summary">Проверять сборки CI ветки main на главной странице и уведомлять о наличии обновлений.</string>
 </resources>

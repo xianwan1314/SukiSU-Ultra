@@ -28,8 +28,9 @@
 #include <linux/list.h>
 #include <linux/sched.h>
 
-#include "extension/umount_paths.h"
-#include "uapi/extension.h"
+#include "uapi/supercall.h"
+#include "feature/kernel_umount.h"
+#include "umount_paths.h"
 
 #include "klog.h" // IWYU pragma: keep
 
@@ -75,7 +76,7 @@ static int do_add_try_umount_local(const struct ksu_add_try_umount_cmd *cmd)
         return 0;
 
     case KSU_UMOUNT_ADD: {
-        long len = strncpy_from_user(buf, (const char __user *)cmd->arg, 256);
+        long len = strncpy_from_user(buf, (const char __user *)cmd->arg, sizeof(buf) - 1);
         if (len <= 0)
             return -EFAULT;
         buf[sizeof(buf) - 1] = '\0';
@@ -83,15 +84,15 @@ static int do_add_try_umount_local(const struct ksu_add_try_umount_cmd *cmd)
         new_entry = kzalloc(sizeof(*new_entry), GFP_KERNEL);
         if (!new_entry)
             return -ENOMEM;
-
         new_entry->umountable = kstrdup(buf, GFP_KERNEL);
         if (!new_entry->umountable) {
             kfree(new_entry);
             return -ENOMEM;
         }
+        new_entry->flags = cmd->flags;
 
         down_write(&mount_list_lock);
-        list_for_each_entry (entry, &mount_list, list) {
+        list_for_each_entry(entry, &mount_list, list) {
             if (!strcmp(entry->umountable, buf)) {
                 up_write(&mount_list_lock);
                 kfree(new_entry->umountable);
@@ -99,7 +100,6 @@ static int do_add_try_umount_local(const struct ksu_add_try_umount_cmd *cmd)
                 return -EEXIST;
             }
         }
-        new_entry->flags = cmd->flags;
         list_add(&new_entry->list, &mount_list);
         up_write(&mount_list_lock);
         return 0;
@@ -112,7 +112,7 @@ static int do_add_try_umount_local(const struct ksu_add_try_umount_cmd *cmd)
         buf[sizeof(buf) - 1] = '\0';
 
         down_write(&mount_list_lock);
-        list_for_each_entry_safe (entry, tmp, &mount_list, list) {
+        list_for_each_entry_safe(entry, tmp, &mount_list, list) {
             if (!strcmp(entry->umountable, buf)) {
                 list_del(&entry->list);
                 kfree(entry->umountable);
@@ -126,6 +126,19 @@ static int do_add_try_umount_local(const struct ksu_add_try_umount_cmd *cmd)
     default:
         return -EINVAL;
     }
+}
+
+int add_try_umount(void __user *arg)
+{
+    struct ksu_add_try_umount_cmd cmd;
+
+    if (!arg)
+        return -EINVAL;
+
+    if (copy_from_user(&cmd, arg, sizeof(cmd)))
+        return -EFAULT;
+
+    return do_add_try_umount_local(&cmd);
 }
 
 /*

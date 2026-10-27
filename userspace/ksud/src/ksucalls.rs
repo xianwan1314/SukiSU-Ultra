@@ -469,46 +469,38 @@ pub fn nuke_ext4_sysfs(mnt: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Wipe all entries from umount list (via the extension ioctl).
+/// Wipe all entries from umount list
 pub fn umount_list_wipe() -> Result<()> {
-    // KSU_EXTENSION_WIPE on the umount_paths extension wipes the list.
-    let mut cmd = ksu_uapi::ksu_extension_cmd {
-        id: ExtensionId::UmountPaths as u32,
-        op: ksu_uapi::KSU_EXTENSION_WIPE,
-        supported: 0,
-        reserved: 0,
-        value: 0,
-        user_ptr: 0,
+    let mut cmd = ksu_uapi::ksu_add_try_umount_cmd {
+        arg: 0,
+        flags: 0,
+        mode: ksu_uapi::KSU_UMOUNT_WIPE,
     };
-    ksuctl(ksu_uapi::KSU_IOCTL_EXTENSION, &raw mut cmd)?;
+    ksuctl(ksu_uapi::KSU_IOCTL_ADD_TRY_UMOUNT, &raw mut cmd)?;
     Ok(())
 }
 
-/// Add mount point to umount list.
+/// Add mount point to umount list
 pub fn umount_list_add(path: &str, flags: u32) -> anyhow::Result<()> {
     let c_path = std::ffi::CString::new(path)?;
-    let mut hdr: ksu_uapi::ksu_extension_umount_cmd = unsafe { std::mem::zeroed() };
-    hdr.op = ksu_uapi::KSU_UMOUNT_IO_OP_ADD;
-    hdr.payload.add.arg = c_path.as_ptr() as u64;
-    hdr.payload.add.flags = flags;
-    hdr.payload.add.mode = ksu_uapi::KSU_UMOUNT_ADD;
-    unsafe {
-        umount_paths_io(&raw mut hdr)?;
-    }
+    let mut cmd = ksu_uapi::ksu_add_try_umount_cmd {
+        arg: c_path.as_ptr() as u64,
+        flags,
+        mode: ksu_uapi::KSU_UMOUNT_ADD,
+    };
+    ksuctl(ksu_uapi::KSU_IOCTL_ADD_TRY_UMOUNT, &raw mut cmd)?;
     Ok(())
 }
 
-/// Delete mount point from umount list.
+/// Delete mount point from umount list
 pub fn umount_list_del(path: &str) -> anyhow::Result<()> {
     let c_path = std::ffi::CString::new(path)?;
-    let mut hdr: ksu_uapi::ksu_extension_umount_cmd = unsafe { std::mem::zeroed() };
-    hdr.op = ksu_uapi::KSU_UMOUNT_IO_OP_DEL;
-    hdr.payload.add.arg = c_path.as_ptr() as u64;
-    hdr.payload.add.flags = 0;
-    hdr.payload.add.mode = ksu_uapi::KSU_UMOUNT_DEL;
-    unsafe {
-        umount_paths_io(&raw mut hdr)?;
-    }
+    let mut cmd = ksu_uapi::ksu_add_try_umount_cmd {
+        arg: c_path.as_ptr() as u64,
+        flags: 0,
+        mode: ksu_uapi::KSU_UMOUNT_DEL,
+    };
+    ksuctl(ksu_uapi::KSU_IOCTL_ADD_TRY_UMOUNT, &raw mut cmd)?;
     Ok(())
 }
 

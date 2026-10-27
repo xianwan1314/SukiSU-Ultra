@@ -12,6 +12,7 @@ import com.sukisu.ultra.Natives
 import com.sukisu.ultra.ksuApp
 import com.sukisu.ultra.magica.BootCompletedReceiver
 import com.sukisu.ultra.ui.UiMode
+import com.sukisu.ultra.ui.screen.module.ModuleNameSort
 import com.sukisu.ultra.ui.screen.modulerepo.RepoSort
 import com.sukisu.ultra.ui.util.execKsud
 import com.sukisu.ultra.ui.util.getFeaturePersistValue
@@ -22,11 +23,17 @@ import java.security.SecureRandom
 
 private const val SETTINGS_PREFS = "settings"
 private const val KEY_USE_SOFT_REBOOT = "soft_reboot"
+private const val KEY_AUTO_DELETE_MODULE_ZIP = "auto_delete_module_zip"
 
 /** Prefer soft reboot: always in jailbreak mode, or when the setting is enabled. */
 fun isSoftRebootPreferred(): Boolean =
     Natives.isLateLoadMode || ksuApp.getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
         .getBoolean(KEY_USE_SOFT_REBOOT, false)
+
+/** Delete module ZIPs downloaded by the manager once they have been installed successfully. */
+fun isAutoDeleteModuleZipEnabled(): Boolean =
+    ksuApp.getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
+        .getBoolean(KEY_AUTO_DELETE_MODULE_ZIP, false)
 
 class SettingsRepositoryImpl : SettingsRepository {
 
@@ -62,9 +69,17 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = prefs.getBoolean("check_update", true)
         set(value) = prefs.edit { putBoolean("check_update", value) }
 
+    override var checkCiUpdate: Boolean
+        get() = prefs.getBoolean("check_ci_update", false)
+        set(value) = prefs.edit { putBoolean("check_ci_update", value) }
+
     override var checkModuleUpdate: Boolean
         get() = prefs.getBoolean("module_check_update", true)
         set(value) = prefs.edit { putBoolean("module_check_update", value) }
+
+    override var autoDeleteModuleZip: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_DELETE_MODULE_ZIP, false)
+        set(value) = prefs.edit { putBoolean(KEY_AUTO_DELETE_MODULE_ZIP, value) }
 
     override var alternativeIcon : Boolean
         get() = prefs.getBoolean("use_alt_icon", false)
@@ -142,6 +157,30 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = prefs.getBoolean("module_sort_action_first", false)
         set(value) = prefs.edit { putBoolean("module_sort_action_first", value) }
 
+    override var moduleSortWebUiFirst: Boolean
+        get() = prefs.getBoolean("module_sort_webui_first", false)
+        set(value) = prefs.edit { putBoolean("module_sort_webui_first", value) }
+
+    override var moduleSortZygiskFirst: Boolean
+        get() = prefs.getBoolean("module_sort_zygisk_first", false)
+        set(value) = prefs.edit { putBoolean("module_sort_zygisk_first", value) }
+
+    override var moduleSortMetamoduleFirst: Boolean
+        get() = prefs.getBoolean("module_sort_metamodule_first", false)
+        set(value) = prefs.edit { putBoolean("module_sort_metamodule_first", value) }
+
+    override var moduleSortNameOrder: String
+        get() = ModuleNameSort.fromStored(prefs.getString("module_sort_name_order", null)).name
+        set(value) = prefs.edit { putString("module_sort_name_order", value) }
+
+    override var moduleSortManual: Boolean
+        get() = prefs.getBoolean("module_sort_manual", false)
+        set(value) = prefs.edit { putBoolean("module_sort_manual", value) }
+
+    override var moduleManualOrder: String
+        get() = prefs.getString("module_manual_order", "") ?: ""
+        set(value) = prefs.edit { putString("module_manual_order", value) }
+
     override var moduleRepoSortOrder: String
         get() = RepoSort.fromStored(
             name = prefs.getString("module_repo_sort", null),
@@ -171,6 +210,10 @@ class SettingsRepositoryImpl : SettingsRepository {
     override var showFullStatus: Boolean
         get() = prefs.getBoolean("show_fingerprint", true)
         set(value) = prefs.edit { putBoolean("show_fingerprint", value) }
+
+    override var hideHomeWarnings: Boolean
+        get() = prefs.getBoolean("hide_home_warnings", false)
+        set(value) = prefs.edit { putBoolean("hide_home_warnings", value) }
 
     override var autoJailbreak: Boolean
         get() = prefs.getBoolean("auto_jailbreak", false)
@@ -226,6 +269,10 @@ class SettingsRepositoryImpl : SettingsRepository {
     override fun isSelinuxHideEnabled(): Boolean = Natives.isSelinuxHideEnabled()
 
     override fun setSelinuxHideEnabled(enabled: Boolean): Int = Natives.setSelinuxHideEnabled(enabled)
+
+    override suspend fun getAvcSpoofStatus(): String = getFeatureStatus("avc_spoof")
+    override fun isAvcSpoofEnabled(): Boolean = Natives.isAvcSpoofEnabled()
+    override fun setAvcSpoofEnabled(enabled: Boolean): Boolean = Natives.setAvcSpoofEnabled(enabled)
 
     override suspend fun getMountHideStatus(): String = getFeatureStatus("mount_hide")
 

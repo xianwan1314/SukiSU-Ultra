@@ -45,7 +45,7 @@
     <string name="home_learn_kernelsu_url">https://sukisu.org/guide/</string>
     <string name="home_click_to_learn_kernelsu">تعرف على كيفية تثبيت SukiSU واستخدام الإضافات</string>
     <string name="home_support_title">إدعمنا</string>
-    <string name="home_support_content">KernelSU سيظل دائماً مجانياً ومفتوح المصدر. مع ذلك، يمكنك متى ما استطعت أن تظهر لنا أنك تهتم بالتبرع.</string>
+    <string name="home_support_content">SukiSU سيظل دائماً مجانياً ومفتوح المصدر. مع ذلك، يمكنك متى ما استطعت أن تظهر لنا أنك تهتم بالتبرع.</string>
     <string name="about_source_code"><![CDATA[أنظر إلى مصدر البرمجة في %1$s<br/>إنضم إلى قناتنا في %2$s ]]></string>
     <string name="profile_capabilities">القدرات</string>
     <string name="module_update">تحديث</string>
@@ -144,4 +144,7 @@
     <string name="profile_flags_desc_no_new_privs">يمنع المزيد من تصعيد الصلاحيات عبر SukiSU من داخل سياق ملف تعريف الروت هذا.</string>
     <string name="install_force_backup">نسخ احتياطي كصورة أصلية</string>
     <string name="install_force_backup_summary">يرجى التأكد من أن صورة boot التي اخترتها هي الصورة الأصلية</string>
+    <string name="settings_check_ci_update">التحقق من تحديثات CI</string>
+    <string name="settings_check_ci_update_summary">التحقق من إصدارات CI لفرع main على الصفحة الرئيسية والإشعار عند توفر تحديث.</string>
+    <string name="settings_module_check_update">التحقق من تحديثات الوحدات</string>
 </resources>

@@ -126,40 +126,48 @@ fun HomePagerMiuix(
                             state = state,
                             actions = actions,
                         )
-                        if (state.checkUpdateEnabled) {
-                            UpdateCard(state = state, actions = actions)
-                        }
-                        if (state.showManagerPrBuildWarning && state.showFullStatus) {
-                            WarningCard(stringResource(id = R.string.home_pr_build_warning), level = WarningLevel.Notice)
-                        } else if (state.showKernelPrBuildWarning && state.showFullStatus) {
-                            WarningCard(stringResource(id = R.string.home_pr_kernel_warning), level = WarningLevel.Notice)
-                        }
-                        if (state.requiresNewKernel && state.showFullStatus) {
-                            WarningCard(
-                                stringResource(
-                                    id = if (state.canInstallKernelUpdate) R.string.require_kernel_version else R.string.require_kernel_version_gki
-                                ),
-                                onClick = if (state.canInstallKernelUpdate) actions.onInstallClick else null
-                            )
-                        }
-                        if (state.requiresNewManager) {
-                            WarningCard(
-                                stringResource(
-                                    id = R.string.require_manager_version
+                if (state.showVersionMismatchWarning) {
+                    WarningCard(
+                        stringResource(R.string.version_spoof_home_warning),
+                        onClick = actions.onOpenVersionSpoof,
+                    )
+                }
+                if (state.checkUpdateEnabled) {
+                    UpdateCard(state = state, actions = actions)
+                }
+                        if (!state.hideHomeWarnings) {
+                            if (state.showManagerPrBuildWarning && state.showFullStatus) {
+                                WarningCard(stringResource(id = R.string.home_pr_build_warning), level = WarningLevel.Notice)
+                            } else if (state.showKernelPrBuildWarning && state.showFullStatus) {
+                                WarningCard(stringResource(id = R.string.home_pr_kernel_warning), level = WarningLevel.Notice)
+                            }
+                            if (state.requiresNewKernel && state.showFullStatus) {
+                                WarningCard(
+                                    stringResource(
+                                        id = if (state.canInstallKernelUpdate) R.string.require_kernel_version else R.string.require_kernel_version_gki
+                                    ),
+                                    onClick = if (state.canInstallKernelUpdate) actions.onInstallClick else null
                                 )
-                            )
-                        }
-                        if (state.showLkmUpdate && state.showFullStatus) {
-                            WarningCard(
-                                message = stringResource(R.string.home_lkm_update_available),
-                                level = WarningLevel.Notice,
-                                onClick = actions.onInstallClick,
-                            )
+                            }
+                            if (state.requiresNewManager) {
+                                WarningCard(
+                                    stringResource(
+                                        id = R.string.require_manager_version
+                                    )
+                                )
+                            }
+                            if (state.showLkmUpdate && state.showFullStatus) {
+                                WarningCard(
+                                    message = stringResource(R.string.home_lkm_update_available),
+                                    level = WarningLevel.Notice,
+                                    onClick = actions.onInstallClick,
+                                )
+                            }
                         }
                         if (state.showRootWarning) {
                             WarningCard(stringResource(id = R.string.grant_root_failed))
                         }
-                        if (state.isPreviewMode) {
+                        if (state.isPreviewMode && !state.hideHomeWarnings) {
                             WarningCard(stringResource(id = R.string.home_preview_mode), level = WarningLevel.Notice)
                         }
                         StatsRow(state = state, actions = actions)
@@ -190,10 +198,27 @@ private fun UpdateCard(
     state: HomeUiState,
     actions: HomeActions,
 ) {
+    val ciInfo = state.ciLatestVersionInfo
+    val ciDialog = rememberConfirmDialog(onConfirm = actions.onCiUpdateClick)
+    val ciTitle = stringResource(R.string.settings_check_ci_update)
+    val ciConfirm = stringResource(R.string.module_update)
+    val ciContent = ciInfo.changelog
+    if (state.checkCiUpdateEnabled && ciInfo.versionCode > state.currentManagerVersionCode) {
+        WarningCard(
+            message = if (state.ciUpdateBusy) stringResource(R.string.ci_update_busy)
+                else stringResource(R.string.ci_update_available, ciInfo.versionCode),
+            level = WarningLevel.Notice,
+            onClick = {
+                if (!state.ciUpdateBusy) ciDialog.showConfirm(
+                    title = ciTitle, content = ciContent, confirm = ciConfirm, markdown = true,
+                )
+            },
+        )
+    }
     val newVersion = state.latestVersionInfo
     val title = stringResource(id = R.string.module_changelog)
     val updateText = stringResource(id = R.string.module_update)
-    val updateDialog = rememberConfirmDialog(onConfirm = { actions.onOpenUrl(newVersion.downloadUrl) })
+    val updateDialog = rememberConfirmDialog(onConfirm = { actions.onReleaseUpdateClick() })
 
     AnimatedVisibility(
         visible = state.hasUpdate,
@@ -204,8 +229,9 @@ private fun UpdateCard(
             message = stringResource(id = R.string.new_version_available, newVersion.versionCode),
             level = WarningLevel.Notice,
             onClick = {
+                if (state.ciUpdateBusy) return@WarningCard
                 if (newVersion.changelog.isEmpty()) {
-                    actions.onOpenUrl(newVersion.downloadUrl)
+                    actions.onReleaseUpdateClick()
                 } else {
                     updateDialog.showConfirm(
                         title = title,
@@ -495,7 +521,7 @@ private fun SupportLinks(
                     tint = colorScheme.onBackground,
                 )
             },
-            onClick = { onOpenUrl("https://patreon.com/weishu") },
+            onClick = { onOpenUrl("https://opencollective.com/sukisu-ultra") },
         )
         ArrowPreference(
             title = stringResource(R.string.home_learn_kernelsu),

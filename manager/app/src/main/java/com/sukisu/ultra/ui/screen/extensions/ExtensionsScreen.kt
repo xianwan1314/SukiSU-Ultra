@@ -7,7 +7,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -53,6 +55,13 @@ fun ExtensionsScreen() {
         }
     }
 
+    val applySuccessMsg = stringResource(R.string.spoof_cpu_apply_success)
+    val applyFailedMsg = stringResource(R.string.spoof_cpu_apply_failed)
+    val configuration = LocalConfiguration.current
+    val applyPartialMsg: (Int, Int) -> String = { ok, fail ->
+        val resources = context.createConfigurationContext(configuration).resources
+        resources.getString(R.string.spoof_cpu_apply_partial_failure, ok, fail)
+    }
     val applyCpu: (SpoofCpuParams) -> Unit = { params ->
         scope.launch(Dispatchers.IO) {
             var ok = 0
@@ -63,9 +72,9 @@ fun ExtensionsScreen() {
             withContext(Dispatchers.Main) {
                 cpuDialogVisible = false
                 val msg = when {
-                    fail == 0 -> context.getString(R.string.spoof_cpu_apply_success)
-                    ok == 0 -> context.getString(R.string.spoof_cpu_apply_failed)
-                    else -> context.getString(R.string.spoof_cpu_apply_partial_failure, ok, fail)
+                    fail == 0 -> applySuccessMsg
+                    ok == 0 -> applyFailedMsg
+                    else -> applyPartialMsg(ok, fail)
                 }
                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
             }
@@ -78,6 +87,8 @@ fun ExtensionsScreen() {
             ExtensionId.DynamicManager -> navigator.push(Route.DynamicManagers)
             ExtensionId.UmountPaths -> navigator.push(Route.UmountManager)
             ExtensionId.CpuSpoof -> openCpuDialog()
+            ExtensionId.SuSFS -> navigator.push(Route.SuSFS)
+            ExtensionId.VersionSpoof -> navigator.push(Route.VersionSpoof)
         }
     }
 
@@ -102,11 +113,21 @@ fun ExtensionsScreen() {
                 currentCpuInfo = cpuInfo,
                 onDismiss = { cpuDialogVisible = false },
                 onApply = applyCpu,
+                onRestore = {
+                    cpuInfo?.let { info ->
+                        applyCpu(SpoofCpuParams((0 until info.coreCount).toList(), info.midrHex, info.bogomips, info.hwcap, info.hwcap2))
+                    }
+                },
             )
             UiMode.Material -> SpoofCpuDialogMaterial(
                 currentCpuInfo = cpuInfo,
                 onDismiss = { cpuDialogVisible = false },
                 onApply = applyCpu,
+                onRestore = {
+                    cpuInfo?.let { info ->
+                        applyCpu(SpoofCpuParams((0 until info.coreCount).toList(), info.midrHex, info.bogomips, info.hwcap, info.hwcap2))
+                    }
+                },
             )
         }
     }

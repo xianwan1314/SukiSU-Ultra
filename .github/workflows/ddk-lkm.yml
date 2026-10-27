@@ -32,6 +32,16 @@ on:
         required: false
         default: false
         type: boolean
+      release_build:
+        description: 'Mark version metadata as a release build'
+        required: false
+        default: false
+        type: boolean
+      version_code:
+        description: 'Consistent KernelSU version code for all module builds'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   build-kernelsu-ko:
@@ -98,6 +108,8 @@ jobs:
         PACKAGE_NAME: ${{ inputs.package_name }}
         EXPECTED_SIZE: ${{ inputs.expected_size }}
         EXPECTED_HASH: ${{ inputs.expected_hash }}
+        KSU_VERSION_CODE: ${{ inputs.version_code }}
+        RELEASE_BUILD: ${{ inputs.release_build }}
       run: |
         git config --global --add safe.directory /__w/SukiSU-Ultra/SukiSU-Ultra
         cd kernel
@@ -119,10 +131,16 @@ jobs:
         if [ -n "$EXPECTED_SIZE" ]; then
           EXTRA_ARGS="$EXTRA_ARGS KSU_EXPECTED_SIZE=$EXPECTED_SIZE KSU_EXPECTED_HASH=$EXPECTED_HASH"
         fi
+        if [ -n "$KSU_VERSION_CODE" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS KSU_VERSION=$KSU_VERSION_CODE"
+        fi
+        if [ "$RELEASE_BUILD" = "true" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS KSU_BUILD_REF=release"
+        fi
         if [ "${{ github.event_name }}" = "pull_request" ]; then
           EXTRA_ARGS="$EXTRA_ARGS KSU_IS_PR_BUILD=1"
         fi
-        CONFIG_KSU=m CC=clang make $EXTRA_ARGS
+        CONFIG_KSU=m CONFIG_KPM=y CC=clang make $EXTRA_ARGS
 
         echo "=== Build completed ==="
 
@@ -156,6 +174,8 @@ jobs:
         PACKAGE_NAME: ${{ inputs.package_name }}
         EXPECTED_SIZE: ${{ inputs.expected_size }}
         EXPECTED_HASH: ${{ inputs.expected_hash }}
+        KSU_VERSION_CODE: ${{ inputs.version_code }}
+        RELEASE_BUILD: ${{ inputs.release_build }}
       run: |
         cd kernel
         make clean
@@ -205,6 +225,12 @@ jobs:
         fi
         if [ -n "$EXPECTED_SIZE" ]; then
           EXTRA_ARGS="$EXTRA_ARGS KSU_EXPECTED_SIZE=$EXPECTED_SIZE KSU_EXPECTED_HASH=$EXPECTED_HASH"
+        fi
+        if [ -n "$KSU_VERSION_CODE" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS KSU_VERSION=$KSU_VERSION_CODE"
+        fi
+        if [ "$RELEASE_BUILD" = "true" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS KSU_BUILD_REF=release"
         fi
         if [ "${{ github.event_name }}" = "pull_request" ]; then
           EXTRA_ARGS="$EXTRA_ARGS KSU_IS_PR_BUILD=1"
