@@ -35,7 +35,7 @@ for i in "${!KMIS[@]}"; do
     rustv=${RUSTS[i]}
     echo "========== Building $kmi =========="
     ODIR="$(realpath .)/out-x64/$kmi"
-
+    
     ORIG_PATH="$PATH"
 
     CLANG_PATH=$(realpath /opt/ddk/clang/"$clangv"/bin)

@@ -183,5 +183,3 @@ int do_kpm(void __user *arg)
     result = handle_kpm(&cmd);
     return copy_to_user(u64_to_user_ptr(cmd.result_code), &result, sizeof(result)) ? -EFAULT : 0;
 }
-/* The top-level extension.c registers the KPM extension handler; this
- * file only implements the underlying KPM control surface. */
