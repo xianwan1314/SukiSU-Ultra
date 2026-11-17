@@ -172,11 +172,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
-          COMMIT_COUNT=$(git rev-list --count refs/remotes/origin/main)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
           VERSION_CODE=$((30000 + COMMIT_COUNT - 4001))
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-          echo "KernelSU version code: $VERSION_CODE (main commits: $COMMIT_COUNT)"
+          echo "KernelSU version code: $VERSION_CODE (HEAD commits: $COMMIT_COUNT)"
 
   build-lkm:
     needs: [generate-key, determine-version]

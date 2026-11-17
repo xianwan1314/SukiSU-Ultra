@@ -54,6 +54,8 @@ jobs:
     steps:
     - name: Checkout source code
       uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
 
     - name: Inject vivo vermagic
       if: ${{ inputs.vivo }}
@@ -109,9 +111,10 @@ jobs:
         EXPECTED_SIZE: ${{ inputs.expected_size }}
         EXPECTED_HASH: ${{ inputs.expected_hash }}
         KSU_VERSION_CODE: ${{ inputs.version_code }}
+        KSU_BUILD_REF_NAME: ${{ github.head_ref || github.ref_name }}
         RELEASE_BUILD: ${{ inputs.release_build }}
       run: |
-        git config --global --add safe.directory /__w/SukiSU-Nova/SukiSU-Nova
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
         cd kernel
 
         echo "=== Building kernelsu.ko for KMI: ${{ inputs.kmi }} ==="
@@ -136,11 +139,18 @@ jobs:
         fi
         if [ "$RELEASE_BUILD" = "true" ]; then
           EXTRA_ARGS="$EXTRA_ARGS KSU_BUILD_REF=release"
+        elif [ -n "$KSU_BUILD_REF_NAME" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS KSU_BUILD_REF=$KSU_BUILD_REF_NAME"
         fi
         if [ "${{ github.event_name }}" = "pull_request" ]; then
           EXTRA_ARGS="$EXTRA_ARGS KSU_IS_PR_BUILD=1"
         fi
         CONFIG_KSU=m CONFIG_KPM=y CC=clang make $EXTRA_ARGS
+
+        if strings kernelsu.ko | grep -Fq 'unknown@unknown'; then
+          echo "ERROR: kernelsu.ko contains unresolved version metadata."
+          exit 1
+        fi
 
         echo "=== Build completed ==="
 
@@ -175,6 +185,7 @@ jobs:
         EXPECTED_SIZE: ${{ inputs.expected_size }}
         EXPECTED_HASH: ${{ inputs.expected_hash }}
         KSU_VERSION_CODE: ${{ inputs.version_code }}
+        KSU_BUILD_REF_NAME: ${{ github.head_ref || github.ref_name }}
         RELEASE_BUILD: ${{ inputs.release_build }}
       run: |
         cd kernel
@@ -231,6 +242,8 @@ jobs:
         fi
         if [ "$RELEASE_BUILD" = "true" ]; then
           EXTRA_ARGS="$EXTRA_ARGS KSU_BUILD_REF=release"
+        elif [ -n "$KSU_BUILD_REF_NAME" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS KSU_BUILD_REF=$KSU_BUILD_REF_NAME"
         fi
         if [ "${{ github.event_name }}" = "pull_request" ]; then
           EXTRA_ARGS="$EXTRA_ARGS KSU_IS_PR_BUILD=1"
@@ -242,6 +255,10 @@ jobs:
           make -C $KDIR M=$MDIR MO=$MDIR compile_commands.json modules CONFIG_KSU=m CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y $EXTRA_ARGS
         else
           make -C $KDIR M=$MDIR src=$MDIR compile_commands.json modules CONFIG_KSU=m CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y $EXTRA_ARGS
+        fi
+        if strings kernelsu.ko | grep -Fq 'unknown@unknown'; then
+          echo "ERROR: kernelsu.ko contains unresolved version metadata."
+          exit 1
         fi
         echo "=== Build completed ==="
 
